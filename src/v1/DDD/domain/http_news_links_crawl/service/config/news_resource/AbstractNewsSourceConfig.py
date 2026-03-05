@@ -1,0 +1,81 @@
+"""
+网络接口请求的新闻源模板类
+
+目标：
+- 将用于提供新闻源请求所需的必要参数
+- 对于能够使用网络接口请求仅用这个就能够全部配置出来
+
+
+后面HTTP请求倾向于httpx依赖，但是为了后续拓展性，这里还是使用必要参数返回了具体看我自定义的RequestConfig，这里决定跟这个配合，然后使用的时候在做一次转接
+"""
+
+# news_crawler/source_config.py
+
+from abc import ABC, abstractmethod
+from copy import replace  # Python 3.13+；3.12 以下用 dataclasses.replace
+from dataclasses import replace
+from typing import Any, TYPE_CHECKING
+
+
+
+from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.RequestConfig import RequestConfig
+# TODO：下面还没有想好
+if TYPE_CHECKING:
+    from v1.DDD.domain.http_news_links_crawl.service.layer.AbstractLayer import AbstractLayer
+    from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.Response import Response
+
+
+class AbstractNewsSourceConfig(ABC):
+    """
+    新闻源配置抽象基类。
+
+    - build_request  : 将遍历参数填入模板，返回填充完毕的 RequestConfig
+    - parse_response : 子类必须实现，从响应中提取链接列表
+    """
+
+    def __init__(
+        self,
+        source_id: str,
+        root_layer: "AbstractLayer",
+        template_request_config: RequestConfig,
+    ) -> None:
+        self.source_id = source_id
+        self.root_layer = root_layer
+        self.template_request_config = template_request_config
+
+    # ------------------------------------------------------------------
+
+    def build_request(self, params: dict[str, Any]) -> RequestConfig:
+        """
+        将遍历参数填入 url_template 和 params，返回一个新的 RequestConfig。
+        原始 request_config 保持不变，可复用。
+
+        params 示例：{"cat1": "tech", "cat2": "ai", "page": 1}
+        """
+        rc = self.template_request_config
+
+        # 路径参数填充
+        filled_url = rc.url.format(**params)
+
+        # query 参数：值可以是占位符字符串，也可以是普通值
+        filled_params = {
+            k: str(v).format(**params) if isinstance(v, str) else v
+            for k, v in rc.params.items()
+        }
+
+        # bearer token 注入到 headers
+        headers = dict(rc.headers)
+        if rc.bearer_token:
+            headers["Authorization"] = f"Bearer {rc.bearer_token}"
+
+        return replace(         # 作用是浅拷贝一个 dataclass 实例，同时覆盖你指定的字段，其余字段原样保留。
+            rc,
+            url_template=filled_url,
+            params=filled_params,
+            headers=headers,
+        )
+
+    @abstractmethod
+    def parse_response(self, response: "Response") -> ParseResult:
+        """各新闻源页面结构差异大，子类必须自行实现。"""
+        ...
