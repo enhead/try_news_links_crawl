@@ -8,8 +8,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+# AI生成的，有些参数有没有用我也不知道
 @dataclass
-class RequestConfig:
+class RequestParameter:
     # ── 基础 ──────────────────────────────────────────────────────
     url: str                               # 填充后即为最终 URL
     method: str = "GET"
@@ -31,7 +32,7 @@ class RequestConfig:
     timeout: float = 10.0
     allow_redirects: bool = True
     verify_ssl: bool = True
-    proxies: dict[str, str] | None = None
+    proxy: str | None = None
 
     # ── 重试 ──────────────────────────────────────────────────────
     max_retries: int = 3

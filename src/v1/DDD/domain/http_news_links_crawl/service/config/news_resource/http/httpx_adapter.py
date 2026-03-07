@@ -5,7 +5,7 @@ import httpx
 from tenacity import stop_after_attempt, wait_fixed, retry_if_exception_type, retry
 
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.RequestConfig import RequestConfig
-from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.Response import Response
+from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.response import Response
 
 
 class HttpAdapter:

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from v1.DDD.domain.http_news_links_crawl.model.entity.CrawlResultEntity import CrawlResultEntity
+from v1.DDD.domain.http_news_links_crawl.model.entity.crawl_result_entity import CrawlResultEntity
 
 
 # 单个新闻源的新闻链接爬虫
@@ -11,7 +11,7 @@ class INewsLinkCrawlService(ABC):
     """
 
     @abstractmethod
-    def incrementalCrawl(self) -> CrawlResultEntity:
+    def incremental_crawl(self) -> CrawlResultEntity:
         """
         增量爬取入口
         TODO 参数返回类型都没有写
