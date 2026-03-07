@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from v1.DDD.domain.http_news_links_crawl.model.valobj.responseparseresultstatevo import ResponseParseResultStateVO
+from v1.DDD.domain.http_news_links_crawl.model.valobj.response_parse_result_state_vo import ResponseParseResultStateVO
 
 
 @dataclass
