@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, TYPE_CHECKING
 
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_factor_entity import LayerFactorEntity
-from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import LayerNodeResultEntity
+from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import CrawlNodeResultEntity
 from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import CrawlLayerFactory, LayerTypeConstants
 
 
@@ -20,7 +20,7 @@ class AbstractCrawlLayer(ABC):
         self.next_layer = next_layer
 
     @abstractmethod
-    def execute(self, request: LayerFactorEntity) -> list[LayerNodeResultEntity]:
+    def execute(self, request: LayerFactorEntity) -> list[CrawlNodeResultEntity]:
         """遍历本层的值，驱动下一层或叶子节点执行，汇总并返回结果"""
         ...
 
@@ -39,7 +39,7 @@ class EnumerableCrawlLayer(AbstractCrawlLayer):
         super().__init__(key, next_layer)
         self.values: list[str] = values
 
-    def execute(self, request: LayerFactorEntity) -> list[LayerNodeResultEntity]:
+    def execute(self, request: LayerFactorEntity) -> list[CrawlNodeResultEntity]:
         results = []
         for v in self.values:
             results += self.next_layer.execute(request.with_param(self.key, v))
@@ -62,7 +62,7 @@ class DependentCrawlLayer(AbstractCrawlLayer):
         self.parent_key: str = values["parent_key"]
         self.mapping: dict[str, list[str]] = values["mapping"]
 
-    def execute(self, request: LayerFactorEntity) -> list[LayerNodeResultEntity]:
+    def execute(self, request: LayerFactorEntity) -> list[CrawlNodeResultEntity]:
         parent_val = request.params[self.parent_key]
         results = []
         for v in self.mapping.get(parent_val, []):
@@ -83,7 +83,7 @@ class SequentialCrawlLayer(AbstractCrawlLayer):
         self.start: int = values["start"]
         self.step: int  = values["step"]
 
-    def execute(self, request: LayerFactorEntity) -> list[LayerNodeResultEntity]:
+    def execute(self, request: LayerFactorEntity) -> list[CrawlNodeResultEntity]:
         results = []
         page = self.start
         while True:
@@ -94,5 +94,5 @@ class SequentialCrawlLayer(AbstractCrawlLayer):
             page += self.step
         return results
 
-    def _should_prune(self, result: LayerNodeResultEntity) -> bool:
+    def _should_prune(self, result: CrawlNodeResultEntity) -> bool:
         return result.is_empty or result.exist_ratio >= 0.8
