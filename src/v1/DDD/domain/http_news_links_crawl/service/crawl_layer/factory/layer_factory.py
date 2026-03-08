@@ -26,7 +26,7 @@ class LayerTypeConstants:
     目前拥有的几个实现类对应的Key，此处主要用于注册类
     """
     ENUMERABLE = "enumerable"
-    DEPENDENT  = "dependent"
+    MAPPING  = "mapping"
     SEQUENTIAL = "sequential"
 
 

@@ -26,6 +26,8 @@ class CrawlNodeResultEntity:
     派生值（is_empty / exist_ratio）通过 @property 按需计算，不占存储。
     """
 
+    # TODO：这里感觉还要加个状态位
+
     # 本页 HTTP 响应解析出的全部 URL，不论新旧，来自 parse_response()
     urls_found: list[DiscoveredNewsLinkUrl]
 
@@ -52,3 +54,32 @@ class CrawlNodeResultEntity:
         if total == 0:
             return 0.0
         return (total - len(self.urls_new)) / total
+
+    def __add__(self, other: "CrawlNodeResultEntity") -> "CrawlNodeResultEntity":
+        """支持加号运算符合并两个结果。"""
+        return CrawlNodeResultEntity(
+            urls_found=self.urls_found + other.urls_found,
+            urls_new=self.urls_new + other.urls_new,
+            children=self.children + other.children,
+        )
+
+    @classmethod
+    def merge_all(cls, results: list["CrawlNodeResultEntity"]) -> "CrawlNodeResultEntity":
+        """合并多个结果到单个对象，children 字段保存原始结果列表。"""
+        all_urls_found: list[DiscoveredNewsLinkUrl] = []
+        all_urls_new: list[DiscoveredNewsLinkUrl] = []
+
+        for result in results:
+            all_urls_found.extend(result.urls_found)
+            all_urls_new.extend(result.urls_new)
+
+        return cls(
+            urls_found=all_urls_found,
+            urls_new=all_urls_new,
+            children=results,
+        )
+
+    @classmethod
+    def empty(cls) -> "CrawlNodeResultEntity":
+        """创建空结果对象。"""
+        return cls(urls_found=[], urls_new=[], children=[])
