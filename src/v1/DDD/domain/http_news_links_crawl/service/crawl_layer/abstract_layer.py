@@ -5,17 +5,17 @@ from typing import Any, TYPE_CHECKING
 
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_factor_entity import LayerFactorEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import LayerNodeResultEntity
-from v1.DDD.domain.http_news_links_crawl.service.layer.factory.layer_factory import LayerFactory, LayerTypeConstants
+from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import CrawlLayerFactory, LayerTypeConstants
 
 
-class AbstractLayer(ABC):
+class AbstractCrawlLayer(ABC):
     """
     Layer 抽象基类。
     每个 Layer 持有下一层引用，自驱动遍历，自己决定是否短路。
     参数通过 LayerRequest.params 逐层积累向下传递，不跳层。
     """
 
-    def __init__(self, key: str, next_layer: AbstractLayer | None = None):
+    def __init__(self, key: str, next_layer: AbstractCrawlLayer | None = None):
         self.key = key
         self.next_layer = next_layer
 
@@ -28,14 +28,14 @@ class AbstractLayer(ABC):
 
 # TODO：先放这里，后面我会放在该放的地方，不着急，这里很多都是草稿，不是最终的
 
-@LayerFactory.register(LayerTypeConstants.ENUMERABLE)
-class EnumerableLayer(AbstractLayer):
+@CrawlLayerFactory.register(LayerTypeConstants.ENUMERABLE)
+class EnumerableCrawlLayer(AbstractCrawlLayer):
     """
     枚举层：遍历固定值列表。
     values: list[str]  e.g. ["tech", "finance"]
     """
 
-    def __init__(self, key: str, values: list[str], next_layer: AbstractLayer | None = None):
+    def __init__(self, key: str, values: list[str], next_layer: AbstractCrawlLayer | None = None):
         super().__init__(key, next_layer)
         self.values: list[str] = values
 
@@ -47,8 +47,8 @@ class EnumerableLayer(AbstractLayer):
 
 
 
-@LayerFactory.register(LayerTypeConstants.DEPENDENT)
-class DependentLayer(AbstractLayer):
+@CrawlLayerFactory.register(LayerTypeConstants.DEPENDENT)
+class DependentCrawlLayer(AbstractCrawlLayer):
     """
     依赖层：根据父层已积累的值，查 mapping 决定本层遍历哪些值。
     values: {
@@ -57,7 +57,7 @@ class DependentLayer(AbstractLayer):
     }
     """
 
-    def __init__(self, key: str, values: dict, next_layer: AbstractLayer | None = None):
+    def __init__(self, key: str, values: dict, next_layer: AbstractCrawlLayer | None = None):
         super().__init__(key, next_layer)
         self.parent_key: str = values["parent_key"]
         self.mapping: dict[str, list[str]] = values["mapping"]
@@ -70,15 +70,15 @@ class DependentLayer(AbstractLayer):
         return results
 
 
-@LayerFactory.register(LayerTypeConstants.SEQUENTIAL)
-class SequentialLayer(AbstractLayer):
+@CrawlLayerFactory.register(LayerTypeConstants.SEQUENTIAL)
+class SequentialCrawlLayer(AbstractCrawlLayer):
     """
     顺序翻页层：从 start 开始步进，每页执行一个 CrawlNode，触发剪枝则停止。
     叶子层，没有 next_layer。
     values: {"start": 1, "step": 1}
     """
 
-    def __init__(self, key: str, values: dict, next_layer: AbstractLayer | None = None):
+    def __init__(self, key: str, values: dict, next_layer: AbstractCrawlLayer | None = None):
         super().__init__(key, next_layer=None)   # 强制叶子
         self.start: int = values["start"]
         self.step: int  = values["step"]

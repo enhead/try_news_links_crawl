@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from typing import Any
 
-from v1.DDD.domain.http_news_links_crawl.service.layer.abstract_layer import AbstractLayer
+from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.abstract_layer import AbstractCrawlLayer
 
 
 # 大部分重要参数我都放这里了
@@ -32,8 +32,8 @@ class LayerTypeConstants:
 
 
 # 工厂装饰器 — 无参数，自动读类上的 type_key
-class LayerFactory:
-    _registry: dict[str, type[AbstractLayer]] = {}
+class CrawlLayerFactory:
+    _registry: dict[str, type[AbstractCrawlLayer]] = {}
 
     @classmethod
     def register(cls, type_key: str):
@@ -44,14 +44,14 @@ class LayerFactory:
                 - 运行时 build() 只是一次 dict.get(key)，O(1)。
         """
 
-        def decorator(layer_cls: type[AbstractLayer]):
+        def decorator(layer_cls: type[AbstractCrawlLayer]):
             cls._registry[type_key] = layer_cls
             return layer_cls
 
         return decorator
 
     @classmethod
-    def build(cls, schema: LayerSchema) -> AbstractLayer:
+    def build(cls, schema: LayerSchema) -> AbstractCrawlLayer:
         layer_cls = cls._registry.get(schema.type)
         if layer_cls is None:
             raise ValueError(f"未知 Layer 类型: {schema.type}")

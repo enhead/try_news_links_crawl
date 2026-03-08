@@ -21,7 +21,7 @@ from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.reque
 
 # TODO：下面还没有想好
 if TYPE_CHECKING:
-    from v1.DDD.domain.http_news_links_crawl.service.layer.factory.layer_factory import LayerSchema
+    from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import LayerSchema
     from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.response import Response
 
 
