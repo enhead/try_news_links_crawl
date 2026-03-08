@@ -36,7 +36,7 @@ class AbstractNewsSourceConfig(ABC):
     def __init__(
         self,
         source_id: str,
-        layer_schema: "LayerSchema",    # 爬虫配置
+        layer_schema: "LayerSchema",    # 爬虫配置 # 这里原本直接就是layer对象，但是职责不分明了，所以多套了一层
         template_request_config: RequestParameter,  # TODO：这里还涉及一些模板替换，感觉这个类其实还是设计下更好
     ) -> None:
         self.source_id = source_id
