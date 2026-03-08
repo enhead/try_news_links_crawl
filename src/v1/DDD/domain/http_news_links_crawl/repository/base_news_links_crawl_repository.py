@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from v1.DDD.domain.http_news_links_crawl.model.entity.crawl_node_result_entity import DiscoveredNewsLinkUrl
+from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import DiscoveredNewsLinkUrl
 
 
 # ---------------------------------------------------------------------------
