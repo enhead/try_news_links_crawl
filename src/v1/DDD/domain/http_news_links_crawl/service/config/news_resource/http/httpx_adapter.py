@@ -1,88 +1,194 @@
+"""
+这个只管发HTTP，其他一律不管
 
-# 搜索下，文档里还有一些注释，不过直接让AI解释更快
+
+让AI帮我改造的
+    1. 连接复用：with httpx.Client() 在每次请求里新建，完全没有复用
+    2. 异常语义化：httpx 异常直接透传到上层
+    3. 可观测性：没有任何日志
+
+
+"""
+
+
+import logging
+import time
 
 import httpx
-from tenacity import stop_after_attempt, wait_fixed, retry_if_exception_type, retry
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential_jitter,
+    wait_fixed,
+)
 
-from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.RequestConfig import RequestConfig
+from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.request_parameter import RequestParameter
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.response import Response
 
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# 业务异常：上层只需感知这两个，不需要 import httpx
+# ---------------------------------------------------------------------------
+
+class HttpRequestError(Exception):
+    """网络层错误（超时、连接失败），可重试。"""
+
+    def __init__(self, url: str, cause: Exception) -> None:
+        super().__init__(f"Network error on {url}: {cause}")
+        self.url = url
+        self.cause = cause
+
+
+class HttpStatusError(Exception):
+    """
+    HTTP 状态码错误（4xx / 5xx）。
+    4xx 不可重试（请求本身有问题），5xx 由 tenacity 按策略处理。
+    """
+
+    def __init__(self, url: str, status_code: int) -> None:
+        super().__init__(f"HTTP {status_code}: {url}")
+        self.url = url
+        self.status_code = status_code
+
+
+# ---------------------------------------------------------------------------
+# HttpAdapter
+# ---------------------------------------------------------------------------
 
 class HttpAdapter:
     """
     HTTP 请求适配器，封装 httpx。
 
     职责单一：只负责"发请求"这一件事。
-    上层（CrawlNode）只需传入填充好的 RequestConfig，不需要感知 httpx 细节。
-    重试逻辑由 tenacity 在内部处理，对上层透明。
+    上层（CrawlNode）只需传入填充好的 RequestParameter，不需要感知 httpx 细节。
+
+    生命周期：
+        AsyncClient 在 __init__ 创建，整个 Adapter 生命周期内复用同一连接池。
+        使用完毕后必须调用 close()，或使用 async with 管理。
+
+        # 推荐写法
+        async with HttpAdapter() as adapter:
+            response = await adapter.send(request_params)
     """
 
-    def send(self, request_config: RequestConfig) -> Response:
-        """对外唯一入口，上层统一调用此方法。"""
-        return self._send_with_retry(request_config)
+    def __init__(self) -> None:
+        # AsyncClient 在此处创建一次，后续所有 send() 共用同一连接池。
+        # 连接复用避免了每次请求都重新 TCP/TLS 握手的开销。
+        self._client = httpx.AsyncClient(
+            # 连接池上限：防止对同一站点开太多并发连接，被对方封 IP
+            limits=httpx.Limits(
+                max_connections=20,
+                max_keepalive_connections=10,
+            ),
+            # 全局默认超时，可被 RequestParameter.timeout 覆盖
+            timeout=httpx.Timeout(connect=5.0, read=15.0),
+        )
 
-    def _send_with_retry(self, rc: RequestConfig) -> Response:
+    async def close(self) -> None:
+        """释放连接池，程序退出或 Adapter 不再使用时调用。"""
+        await self._client.aclose()
+
+    async def __aenter__(self) -> "HttpAdapter":
+        return self
+
+    async def __aexit__(self, *_) -> None:
+        await self.close()
+
+    # ------------------------------------------------------------------
+    # 对外唯一入口
+    # ------------------------------------------------------------------
+
+    async def send(self, request_config: RequestParameter) -> Response:
+        """
+        上层统一调用此方法。
+        内部重试对上层透明，失败时抛出 HttpRequestError 或 HttpStatusError。
+        """
+        return await self._send_with_retry(request_config)
+
+    # ------------------------------------------------------------------
+    # 重试包装
+    # ------------------------------------------------------------------
+
+    async def _send_with_retry(self, request_config: RequestParameter) -> Response:
         """
         动态构建重试装饰器后执行请求。
 
         为什么在方法内部定义装饰器而不是类级别？
-        因为 max_retries / retry_delay 来自 RequestConfig，
+        因为 max_retries / retry_delay 来自 RequestParameter，
         不同新闻源可以有不同的重试策略，必须运行时才能确定。
         """
 
         @retry(
-            # 最多尝试 max_retries 次（含第一次）
-            stop=stop_after_attempt(rc.max_retries),
-            # 每次重试前等待固定秒数
-            wait=wait_fixed(rc.retry_delay),
-            # 只对网络层异常重试；4xx/5xx 由 raise_for_status() 抛出
-            # HTTPStatusError 不在此列，避免对服务端错误无意义重试
-            retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
-            # 重试次数耗尽后，将最后一次异常原样抛出，而非包装成 RetryError
+            stop=stop_after_attempt(request_config.max_retries),
+            # 原代码用 wait_fixed，这里改为指数退避 + jitter：
+            # 防止多个并发请求在同一时刻集体重试，形成"重试风暴"打垮对方服务。
+            # 如果 RequestParameter 明确指定了固定延迟，可换回 wait_fixed(rc.retry_delay)。
+            wait=wait_exponential_jitter(initial=request_config.retry_delay, max=30, jitter=1),
+            # 只对网络层异常重试；HttpStatusError 由上层决定，不在重试范围内
+            retry=retry_if_exception_type(HttpRequestError),
             reraise=True,
         )
-        def _do_send() -> Response:
-            return self._execute(rc)
+        async def _do_send() -> Response:
+            return await self._execute(request_config)
 
-        return _do_send()
+        return await _do_send()
 
-    @staticmethod
-    def _execute(rc: RequestConfig) -> Response:
+    # ------------------------------------------------------------------
+    # 单次请求执行
+    # ------------------------------------------------------------------
+
+    async def _execute(self, request_config: RequestParameter) -> Response:
         """
-        真正执行单次 HTTP 请求。
-
-        使用 with 语句管理 httpx.Client 生命周期，
-        每次请求结束后自动关闭连接，不复用连接池。
-        若需要性能优化，可改为在外部维护一个长生命周期的 Client。
+        真正执行单次 HTTP 请求，并将 httpx 异常翻译为业务异常。
         """
+        auth = tuple(request_config.auth) if request_config.auth else None
+        start = time.monotonic()
 
-        # RequestConfig.auth 是 tuple[str, str] | None（HTTP Basic Auth）
-        # httpx 要求传入原生 tuple，dataclass 里存的已经是 tuple，直接用即可
-        # 显式转换是为了防止子类传入 list 等其他序列类型
-        auth = tuple(rc.auth) if rc.auth else None
-
-        with httpx.Client(
-            verify=rc.verify_ssl,           # False 可跳过 SSL 证书校验（内网/自签名场景）
-            follow_redirects=rc.allow_redirects,
-            proxy=rc.proxies,               # httpx >= 0.28 用 proxy（单个代理地址字符串）
-            timeout=rc.timeout,
-        ) as client:
-            resp = client.request(
-                method=rc.method,
-                url=rc.url,                 # 经 build_request 填充后的最终 URL
-                headers=rc.headers,         # bearer token 已在 build_request 时注入
-                cookies=rc.cookies,
-                params=rc.params or None,   # 空 dict 传 None，避免 URL 带多余 ?
-                json=rc.json_body,          # Content-Type: application/json
-                data=rc.form_data,          # Content-Type: application/x-www-form-urlencoded
-                auth=auth,                  # HTTP Basic Auth，与 bearer token 二选一
+        try:
+            resp = await self._client.request(
+                method=request_config.method,
+                url=request_config.url,
+                headers=request_config.headers,
+                cookies=request_config.cookies,
+                params=request_config.params or None,
+                json=request_config.json_body,
+                data=request_config.form_data,
+                auth=auth,
+                timeout=request_config.timeout,                    # 单次请求可覆盖全局超时
+                follow_redirects=request_config.allow_redirects,
             )
-            # 4xx / 5xx 时抛出 httpx.HTTPStatusError，不会触发上层重试
-            resp.raise_for_status()
+        except httpx.TimeoutException as exc:
+            # --- 异常语义化：超时 → HttpRequestError，上层不感知 httpx ---
+            logger.warning("Timeout: %s", request_config.url)
+            raise HttpRequestError(url=request_config.url, cause=exc) from exc
+
+        except httpx.NetworkError as exc:
+            # --- 异常语义化：网络错误 → HttpRequestError ---
+            logger.warning("Network error: %s — %s", request_config.url, exc)
+            raise HttpRequestError(url=request_config.url, cause=exc) from exc
+
+        elapsed = time.monotonic() - start
+
+        # 4xx / 5xx 统一翻译为 HttpStatusError
+        if resp.is_error:
+            logger.warning(
+                "HTTP %d [%.2fs]: %s",
+                resp.status_code, elapsed, request_config.url,
+            )
+            raise HttpStatusError(url=request_config.url, status_code=resp.status_code)
+
+        # --- 可观测性：每次成功请求记录状态码 + 耗时 ---
+        logger.info(
+            "HTTP %d [%.2fs]: %s",
+            resp.status_code, elapsed, request_config.url,
+        )
 
         return Response(
             status_code=resp.status_code,
             text=resp.text,
             headers=dict(resp.headers),
-            url=str(resp.url),              # 记录实际请求的 URL（重定向后可能与入参不同）
+            url=str(resp.url),
         )

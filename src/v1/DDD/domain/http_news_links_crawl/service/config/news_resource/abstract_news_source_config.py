@@ -18,9 +18,10 @@ from typing import Any, TYPE_CHECKING
 
 from v1.DDD.domain.http_news_links_crawl.model.entity.response_parse_result_entity import ResponseParseResultEntity
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.request_parameter import RequestParameter
+
 # TODO：下面还没有想好
 if TYPE_CHECKING:
-    from v1.DDD.domain.http_news_links_crawl.service.layer.abstract_layer import AbstractLayer
+    from v1.DDD.domain.http_news_links_crawl.service.layer.factory.layer_factory import LayerSchema
     from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.response import Response
 
 
@@ -35,11 +36,11 @@ class AbstractNewsSourceConfig(ABC):
     def __init__(
         self,
         source_id: str,
-        root_layer: "AbstractLayer",
+        layer_schema: "LayerSchema",    # 爬虫配置
         template_request_config: RequestParameter,  # TODO：这里还涉及一些模板替换，感觉这个类其实还是设计下更好
     ) -> None:
         self.source_id = source_id
-        self.root_layer = root_layer
+        self.layer_schema = layer_schema
         self.template_request_config = template_request_config
 
     # ------------------------------------------------------------------
