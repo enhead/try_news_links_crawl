@@ -12,3 +12,4 @@ wheels/
 # 环境相关
 .idea
 /.spec-workflow/
+/.serena/
