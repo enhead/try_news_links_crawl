@@ -48,7 +48,7 @@ class AbstractCrawlLayer(ABC):
     # ------------------------------------------------------------------ #
 
     @abstractmethod
-    def execute(self, factor: LayerFactorEntity) -> CrawlNodeResultEntity:
+    async def execute(self, factor: LayerFactorEntity) -> CrawlNodeResultEntity:
         """
         主执行方法：遍历本层所有值，递归驱动下层，汇总返回 LayerResult。
 
