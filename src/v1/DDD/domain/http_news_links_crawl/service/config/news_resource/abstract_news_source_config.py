@@ -1,25 +1,22 @@
 """
-网络接口请求的新闻源模板类
+网络接口请求的新闻源配置抽象类
 
 目标：
-- 将用于提供新闻源请求所需的必要参数
-- 对于能够使用网络接口请求仅用这个就能够全部配置出来
-
-
-后面HTTP请求倾向于httpx依赖，但是为了后续拓展性，这里还是使用必要参数返回了具体看我自定义的RequestConfig，这里决定跟这个配合，然后使用的时候在做一次转接
+- 封装新闻源的元数据、爬虫配置和请求模板
+- 提供请求构建和响应解析的抽象接口
+- 支持从数据库或 JSON 配置加载
 """
 
-# TODO 还是差点，主要还有个问题，就是页面内容前需要先检查下，这里我还需要看看，目前计划在parse_response()中加
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from copy import replace  # Python 3.13+；3.12 以下用 dataclasses.replace
-from dataclasses import replace, field, dataclass
+from dataclasses import replace
 from typing import Any, TYPE_CHECKING
 
+from v1.DDD.domain.http_news_links_crawl.model.entity.news_source_metadata import NewsSourceMetadata
 from v1.DDD.domain.http_news_links_crawl.model.entity.response_parse_result_entity import ResponseParseResultEntity
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.request_parameter import RequestParameter
 
-# TODO：下面还没有想好
 if TYPE_CHECKING:
     from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import LayerSchema
     from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.response import Response
@@ -29,38 +26,86 @@ class AbstractNewsSourceConfig(ABC):
     """
     新闻源配置抽象基类。
 
-    - build_request  : 将遍历参数填入模板，返回填充完毕的 RequestParameter
-    - parse_response : 子类必须实现，从响应中提取链接列表
+    封装新闻源的完整配置信息：
+    - metadata: 新闻源元数据（来自数据库或配置文件）
+    - layer_schema: 爬虫层级配置（枚举层、映射层、顺序层组合）
+    - template_request_config: HTTP 请求模板（URL、参数、headers）
+
+    子类需要实现：
+    - parse_response(): 从响应中提取新闻链接
+    - extract_category(): 从爬取参数中提取栏目分类
     """
 
     def __init__(
         self,
-        source_id: str,
-        layer_schema: "LayerSchema",    # 爬虫配置 # 这里原本直接就是layer对象，但是职责不分明了，所以多套了一层
-        template_request_config: RequestParameter,  # TODO：这里还涉及一些模板替换，感觉这个类其实还是设计下更好
+        metadata: NewsSourceMetadata,
+        layer_schema: "LayerSchema",
+        template_request_config: RequestParameter,
     ) -> None:
-        self.source_id = source_id
+        """
+        初始化新闻源配置。
+
+        Args:
+            metadata: 新闻源元数据（包含 resource_id, country, name, domain 等）
+            layer_schema: 爬虫层级配置
+            template_request_config: HTTP 请求模板
+        """
+        self.metadata = metadata
         self.layer_schema = layer_schema
         self.template_request_config = template_request_config
 
     # ------------------------------------------------------------------
+    # 便捷属性：向后兼容，避免大量代码修改
+    # ------------------------------------------------------------------
+
+    @property
+    def source_id(self) -> str:
+        """新闻源唯一标识（向后兼容）"""
+        return self.metadata.resource_id
+
+    @property
+    def country(self) -> str:
+        """国家代码"""
+        return self.metadata.country
+
+    @property
+    def name(self) -> str:
+        """媒体机构名称"""
+        return self.metadata.name
+
+    @property
+    def domain(self) -> str:
+        """域名"""
+        return self.metadata.domain
+
+    @property
+    def language(self) -> str:
+        """语言代码"""
+        return self.metadata.language
+
+    # ------------------------------------------------------------------
+    # 核心方法
+    # ------------------------------------------------------------------
 
     def build_request(self, params: dict[str, Any]) -> RequestParameter:
         """
-        将遍历参数填入 url_template 和 params，返回一个新的 RequestParameter。
-        原始 request_config 保持不变，可复用。
+        将遍历参数填入 URL 模板和 query 参数，返回填充完毕的 RequestParameter。
+        原始 template_request_config 保持不变，可复用。
 
-        params 示例：{"cat1": "tech", "cat2": "ai", "page": 1}
+        Args:
+            params: 遍历参数，如 {"cat1": "tech", "cat2": "ai", "page": 1}
+
+        Returns:
+            填充后的 RequestParameter 对象
         """
         rc = self.template_request_config
 
-        # TODO：下面可能缺错异常，但是估计没啥事
         # 路径参数填充
         filled_url = rc.url.format(**params)
 
         # query 参数：值可以是占位符字符串，也可以是普通值
         filled_params = {
-            k: v.format(**params) if isinstance(v, str) else v  # 去掉多余的 str()
+            k: v.format(**params) if isinstance(v, str) else v
             for k, v in rc.params.items()
         }
 
@@ -69,7 +114,7 @@ class AbstractNewsSourceConfig(ABC):
         if rc.bearer_token:
             headers["Authorization"] = f"Bearer {rc.bearer_token}"
 
-        return replace(         # 作用是浅拷贝一个 dataclass 实例，同时覆盖你指定的字段，其余字段原样保留。
+        return replace(
             rc,
             url=filled_url,
             params=filled_params,
@@ -79,7 +124,41 @@ class AbstractNewsSourceConfig(ABC):
     @abstractmethod
     def parse_response(self, response: "Response") -> ResponseParseResultEntity:
         """
-        从响应中提取新闻链接
-            各新闻源页面结构差异大，子类必须自行实现。
+        从响应中提取新闻链接。
+
+        各新闻源页面结构差异大，子类必须自行实现。
+
+        Args:
+            response: HTTP 响应对象
+
+        Returns:
+            解析结果实体，包含提取的链接列表和错误信息
+        """
+        ...
+
+    @abstractmethod
+    def extract_category(self, params: dict[str, Any]) -> str:
+        """
+        从爬取参数中提取栏目分类。
+
+        用于保存到数据库 news_link.category 字段。
+        不同新闻源的参数结构不同，由子类根据实际情况实现。
+
+        Args:
+            params: 爬取参数，如 {"cat1": "tech", "cat2": "ai", "page": 1}
+
+        Returns:
+            栏目分类字符串，如 "Politics", "Technology"
+
+        Examples:
+            >>> # 示例1：单层分类
+            >>> def extract_category(self, params):
+            ...     return params.get("category", "Unknown")
+            >>>
+            >>> # 示例2：多层分类组合
+            >>> def extract_category(self, params):
+            ...     cat1 = params.get("cat1", "")
+            ...     cat2 = params.get("cat2", "")
+            ...     return f"{cat1}/{cat2}" if cat2 else cat1
         """
         ...

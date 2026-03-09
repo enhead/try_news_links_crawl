@@ -89,6 +89,7 @@ class SequentialLayer(AbstractCrawlLayer):
             return True, f"连续{state.consecutive_duplicate}页全部重复"
         return False, ""
 
+    # TODO：待探究：这里其实都还是顺序同步的跑，还没有上并发
     async def execute(self, factor: LayerFactorEntity) -> CrawlNodeResultEntity:
         """顺序翻页，每个节点单独去重，支持剪枝。"""
         current_value = self.start

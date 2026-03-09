@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import DiscoveredNewsLinkUrl
+if TYPE_CHECKING:
+    from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
 
 
 # ---------------------------------------------------------------------------
@@ -42,49 +44,38 @@ class INewsLinksCrawlRepository(ABC):
     @abstractmethod
     async def check_exists_batch(
         self,
-        discovered: list[DiscoveredNewsLinkUrl],
-    ) -> list[DiscoveredNewsLinkUrl]:
+        aggregate: "NewsLinkBatchAggregate",
+    ) -> "NewsLinkBatchAggregate":
         """
-        返回 discovered 中不在 news_link 表里的部分（即新链接）。
-
-        入参传完整对象而非 list[str] 的原因：
-            实现层需要返回 DiscoveredNewsLinkUrl 对象（含 crawl_params），
-            直接传完整对象，实现层提取 url 做 IN 查询后，
-            missing 只需从入参过滤即可，无需重新关联。
+        返回聚合对象中不在 news_link 表里的链接（即新链接）
 
         实现层约束：
             必须用 WHERE url IN (...) 单次查询完成，禁止逐条查询。
 
         Args:
-            discovered: 本页解析出的全部链接对象，可为空列表。
+            aggregate: 包含待检查链接的聚合对象
 
         Returns:
-            discovered 中不在 DB 里的链接列表，可直接赋给 CrawlNodeResultEntity.urls_new。
+            包含不在 DB 里的链接的新聚合对象
         """
         ...
 
     @abstractmethod
     async def save_batch(
         self,
-        source_id: str,
-        links: list[DiscoveredNewsLinkUrl],
+        aggregate: "NewsLinkBatchAggregate",
     ) -> BatchSaveResult:
         """
-        批量写入新链接到 news_link 表。
-
-        入参 links 即 CrawlNodeResultEntity.urls_new，调用方无需任何转换。
-        source_id 单独传入，因为 DiscoveredNewsLinkUrl 只描述"发现了什么"，
-        不持有归属信息（归属来自 SourceConfig）。
+        批量写入新链接到 news_link 表
 
         实现层约束：
             必须使用 INSERT IGNORE 或 ON DUPLICATE KEY 保证幂等性，
             同一 URL 重复写入不报错，不产生重复行。
 
         Args:
-            source_id: 新闻源标识，对应 news_source.source_id。
-            links:     待写入的链接列表，通常直接传 CrawlNodeResultEntity.urls_new。
+            aggregate: 包含新闻源配置和待保存链接的聚合对象
 
         Returns:
-            BatchSaveResult，含实际写入条数与跳过的重复 URL。
+            BatchSaveResult，含实际写入条数与跳过的重复 URL
         """
         ...
