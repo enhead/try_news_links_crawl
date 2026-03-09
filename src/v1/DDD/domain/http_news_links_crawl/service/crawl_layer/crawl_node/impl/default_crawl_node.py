@@ -44,7 +44,7 @@ class DefaultCrawlNode(AbstractCrawlNode):
         )
 
     async def execute(self) -> CrawlNodeResultEntity:
-        """完整流程：请求 → 解析 → 去重。"""
+        """完整流程：请求 → 解析 → 去重 → 保存。"""
         urls_found = await self._fetch_and_parse()
 
         # 批量去重
@@ -59,6 +59,21 @@ class DefaultCrawlNode(AbstractCrawlNode):
             "爬取节点完成(含去重): params=%s, found=%d, new=%d",
             self._factor.params, len(urls_found), len(urls_new),
         )
+
+        # 批量保存
+        if urls_new:
+            from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
+
+            aggregate = NewsLinkBatchAggregate(
+                metadata=self._factor.context.source_config.metadata,
+                links=urls_new
+            )
+            save_result = await self._factor.context.news_crawl_repository.save_batch(aggregate)
+
+            logger.debug(
+                "批量保存完成: params=%s, saved=%d, skipped=%d",
+                self._factor.params, save_result.saved_count, len(save_result.skipped_urls)
+            )
 
         return CrawlNodeResultEntity(
             urls_found=urls_found,
