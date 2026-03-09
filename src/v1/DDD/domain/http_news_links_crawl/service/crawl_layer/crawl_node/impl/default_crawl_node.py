@@ -92,8 +92,15 @@ class DefaultCrawlNode(AbstractCrawlNode):
         # 解析响应
         parse_result = context.source_config.parse_response(response)
 
+        # 提取 category（同一批链接的 category 相同）
+        category = context.source_config.extract_category(params)
+
         urls_found = [
-            DiscoveredNewsLinkUrl(url=url, crawl_params=dict(params))
+            DiscoveredNewsLinkUrl(
+                url=url,
+                crawl_params=dict(params),
+                category=category
+            )
             for url in parse_result.urls
         ]
 

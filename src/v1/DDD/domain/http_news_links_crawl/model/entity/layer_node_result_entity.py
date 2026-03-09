@@ -12,6 +12,8 @@ class DiscoveredNewsLinkUrl:
     url: str          # 新闻页面链接，最终写入 news_link.url
     crawl_params: dict  # 发现此 URL 时的完整参数快照，如 {"cat1":"tech","page":3}
                         # 写入 news_link.crawl_params，仅用于排障复现，不参与业务逻辑
+    category: str     # 栏目分类，如 "Politics", "Technology"
+                      # 由 source_config.extract_category(crawl_params) 提取后填入
 
 
 @dataclass
