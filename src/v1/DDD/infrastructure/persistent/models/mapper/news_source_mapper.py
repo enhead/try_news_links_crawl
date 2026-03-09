@@ -2,7 +2,7 @@
 
 from v1.DDD.domain.http_news_links_crawl.model.entity.news_source_metadata import NewsSourceMetadata
 from v1.DDD.domain.http_news_links_crawl.model.valobj.news_source_status_vo import NewsSourceStatusVO
-from ..news_source import NewsSourceModel
+from v1.DDD.infrastructure.persistent.models import NewsSourceModel
 
 
 class NewsSourceMapper:

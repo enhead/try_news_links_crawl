@@ -1,7 +1,7 @@
 """NewsLink 映射器：ORM Model <-> 字典"""
 
 from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
-from ..news_link import NewsLinkModel
+from v1.DDD.infrastructure.persistent.models import NewsLinkModel
 
 
 class NewsLinkMapper:

@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.news_source import NewsSourceModel
+from v1.DDD.infrastructure.persistent.models import NewsSourceModel
 
 
 class NewsSourceDAO:

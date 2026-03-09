@@ -9,8 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..valobj.news_source_status_vo import NewsSourceStatusVO
-
+from v1.DDD.domain.http_news_links_crawl.model.valobj import NewsSourceStatusVO
 
 
 @dataclass(frozen=True)

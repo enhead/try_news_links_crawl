@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.mysql import insert
 
-from ..models.news_link import NewsLinkModel
+from v1.DDD.infrastructure.persistent.models import NewsLinkModel
 
 
 # TODO：后面再看看这里都是简单实现
@@ -28,7 +28,8 @@ class NewsLinkDAO:
             return 0
 
         stmt = insert(NewsLinkModel).values(records)
-        stmt = stmt.on_duplicate_key_update(updated_at=stmt.inserted.updated_at)
+        # ON DUPLICATE KEY UPDATE：遇到重复的 url 时，不做任何更新（相当于 IGNORE）
+        stmt = stmt.on_duplicate_key_update(url=stmt.inserted.url)
 
         result = await self.session.execute(stmt)
         return result.rowcount
