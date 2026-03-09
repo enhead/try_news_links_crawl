@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from v1.DDD.domain.http_news_links_crawl.model.valobj.response_parse_result_state_vo import ResponseParseResultStateVO
+from v1.DDD.domain.http_news_links_crawl.model.valobj.response_parse_result_status_vo import ResponseParseResultStatusVO
 
 
 @dataclass
@@ -13,7 +13,7 @@ class ResponseParseResultEntity:
         其他东西都不负责
     """
 
-    status: ResponseParseResultStateVO
+    status: ResponseParseResultStatusVO
     # 新闻链接列表
     urls: list[str] = field(default_factory=list)
 

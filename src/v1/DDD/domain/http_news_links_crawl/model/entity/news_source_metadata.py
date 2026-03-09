@@ -8,14 +8,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import IntEnum
 
+from ..valobj.news_source_status_vo import NewsSourceStatusVO
 
-class NewsSourceStatus(IntEnum):
-    """新闻源状态枚举"""
-    NORMAL = 0      # 正常调度
-    DISABLED = 1    # 手动停用
-    PARSE_ERROR = 2 # 解析异常（连续失败后自动标记）
 
 
 @dataclass(frozen=True)
@@ -44,7 +39,7 @@ class NewsSourceMetadata:
     url: str
     country: str
     language: str
-    status: int = NewsSourceStatus.NORMAL
+    status: NewsSourceStatusVO = NewsSourceStatusVO.NORMAL
 
     def __post_init__(self) -> None:
         """验证字段有效性"""
@@ -54,12 +49,12 @@ class NewsSourceMetadata:
             raise ValueError(f"country 必须是2位国家代码（ISO 3166-1 alpha-2），当前值: {self.country}")
         if not self.domain:
             raise ValueError("domain 不能为空")
-        if self.status not in (0, 1, 2):
-            raise ValueError(f"status 必须是 0/1/2，当前值: {self.status}")
+        if not isinstance(self.status, NewsSourceStatusVO):
+            raise ValueError(f"status 必须是 NewsSourceStatusVO 枚举类型，当前值: {self.status}")
 
     def is_active(self) -> bool:
         """判断新闻源是否可调度"""
-        return self.status == NewsSourceStatus.NORMAL
+        return self.status == NewsSourceStatusVO.NORMAL
 
     def __repr__(self) -> str:
         return (
