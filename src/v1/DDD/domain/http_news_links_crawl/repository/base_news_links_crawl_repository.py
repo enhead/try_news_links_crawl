@@ -108,6 +108,8 @@ class INewsCrawlRepository(ABC):
         """
         ...
 
+
+    # TODO 待完善：批量保存操作我先简单实现了
     @abstractmethod
     async def save_batch(
         self,
