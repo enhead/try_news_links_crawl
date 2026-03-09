@@ -49,7 +49,7 @@ class DefaultCrawlNode(AbstractCrawlNode):
 
         # 批量去重
         if urls_found:
-            urls_new = await self._factor.context.news_links_crawl_repository.check_exists_batch(
+            urls_new = await self._factor.context.news_crawl_repository.check_exists_batch(
                 urls_found
             )
         else:

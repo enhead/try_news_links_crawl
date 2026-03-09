@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from v1.DDD.domain.http_news_links_crawl.repository.base_news_links_crawl_repository import INewsLinksCrawlRepository
+from v1.DDD.domain.http_news_links_crawl.repository.base_news_links_crawl_repository import INewsCrawlRepository
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.abstract_news_source_config import \
     AbstractNewsSourceConfig
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.httpx_adapter import HttpAdapter
@@ -27,12 +27,12 @@ class CrawlContext:
     Attributes:
         source_config:                新闻源配置，提供 build_request / parse_response 能力
         http_adapter:                 HTTP 请求适配器，负责实际网络通信与重试
-        news_links_crawl_repository:  新闻链接数据库操作接口，用于去重查询与剪枝判断
+        news_crawl_repository:  新闻链接数据库操作接口，用于去重查询与剪枝判断
     """
 
     source_config: AbstractNewsSourceConfig
     http_adapter: HttpAdapter
-    news_links_crawl_repository: INewsLinksCrawlRepository
+    news_crawl_repository: INewsCrawlRepository
 
     def __repr__(self) -> str:
         # 只展示类型名，避免打印基础设施内部细节
@@ -40,6 +40,6 @@ class CrawlContext:
             f"CrawlContext("
             f"source={self.source_config.__class__.__name__}, "
             f"adapter={self.http_adapter.__class__.__name__}, "
-            f"repository={self.news_links_crawl_repository.__class__.__name__}"
+            f"repository={self.news_crawl_repository.__class__.__name__}"
             f")"
         )

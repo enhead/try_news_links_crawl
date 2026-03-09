@@ -106,7 +106,7 @@ class LayerFactorEntity:
     @property
     def news_links_crawl_repository(self):
         """透传 context.news_links_crawl_repository。"""
-        return self.context.news_links_crawl_repository
+        return self.context.news_crawl_repository
 
     # ------------------------------------------------------------------ #
     #  调试辅助                                                             #
