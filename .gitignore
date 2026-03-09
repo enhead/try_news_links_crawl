@@ -13,3 +13,13 @@ wheels/
 .idea
 /.spec-workflow/
 /.serena/
+
+
+
+
+#claude相关
+# 忽略所有目录下的 CLAUDE.md 文件
+CLAUDE.md
+
+# 或者更明确的写法
+**/CLAUDE.md
