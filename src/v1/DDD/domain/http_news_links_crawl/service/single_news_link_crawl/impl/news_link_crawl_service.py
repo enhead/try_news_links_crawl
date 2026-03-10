@@ -5,8 +5,8 @@ import logging
 from v1.DDD.domain.http_news_links_crawl.model.entity.crawl_result_entity import CrawlResultEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_factor_entity import LayerFactorEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.news_resource_crawl_factor_entity import NewsResourceCrawlFactorEntity
-from v1.DDD.domain.http_news_links_crawl.service.base_news_link_crawl_service import INewsLinkCrawlService
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import CrawlLayerFactory
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.base_news_link_crawl_service import INewsLinkCrawlService
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.factory.layer_factory import CrawlLayerFactory
 
 logger = logging.getLogger(__name__)
 

@@ -15,13 +15,12 @@ from typing import Any
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_factor_entity import LayerFactorEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import (
     CrawlNodeResultEntity,
-    DiscoveredNewsLinkUrl,
 )
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.abstract_layer import AbstractCrawlLayer
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.crawl_node.abstract_crawl_node import (
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.abstract_layer import AbstractCrawlLayer
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.crawl_node.abstract_crawl_node import (
     AbstractCrawlNode,
 )
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import (
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.factory.layer_factory import (
     CrawlLayerFactory,
     LayerType,
 )

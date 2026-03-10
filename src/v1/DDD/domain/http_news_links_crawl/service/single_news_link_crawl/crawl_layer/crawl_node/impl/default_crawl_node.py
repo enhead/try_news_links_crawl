@@ -19,7 +19,7 @@ from v1.DDD.infrastructure.http.httpx_adapter import (
     HttpRequestError,
     HttpStatusError,
 )
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.crawl_node.abstract_crawl_node import (
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.crawl_node.abstract_crawl_node import (
     AbstractCrawlNode,
 )
 
