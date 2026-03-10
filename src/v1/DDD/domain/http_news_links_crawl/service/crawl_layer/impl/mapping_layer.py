@@ -16,7 +16,7 @@ from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity i
 from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.abstract_layer import AbstractCrawlLayer
 from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import (
     CrawlLayerFactory,
-    LayerTypeConstants,
+    LayerType,
 )
 
 
@@ -27,7 +27,7 @@ class MappingLayerConfig:
     mapping: dict[str, list[str]]
 
 
-@CrawlLayerFactory.register(LayerTypeConstants.MAPPING)
+@CrawlLayerFactory.register(LayerType.MAPPING)
 class MappingLayer(AbstractCrawlLayer):
     """
     字典映射层：根据父层参数值查映射表。
@@ -43,7 +43,7 @@ class MappingLayer(AbstractCrawlLayer):
         values: MappingLayerConfig | dict[str, Any],
         next_layer: AbstractCrawlLayer | None = None,
     ) -> None:
-        super().__init__(key, next_layer)
+        super().__init__(key, values, next_layer)
 
         if isinstance(values, dict):
             config = MappingLayerConfig(**values)

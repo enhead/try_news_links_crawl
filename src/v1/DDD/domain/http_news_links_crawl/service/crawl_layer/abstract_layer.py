@@ -15,7 +15,7 @@ Layer 自驱动原则：
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 
 
@@ -31,16 +31,24 @@ class AbstractCrawlLayer(ABC):
 
     Attributes:
         key:        当前层负责的参数维度名，如 "cat1" / "page"
+        values:     层的配置值（各层类型自己解释）
         next_layer: 下一层引用；叶子层（SequentialLayer）持有 CrawlNode 而非 Layer，此处为 None
     """
 
-    def __init__(self, key: str, next_layer: AbstractCrawlLayer | None = None) -> None:
+    def __init__(
+        self,
+        key: str,
+        values: Any,
+        next_layer: AbstractCrawlLayer | None = None
+    ) -> None:
         """
         Args:
             key:        当前层的参数名
+            values:     层的配置值（各层类型自己解释）
             next_layer: 链中的下一层；叶子层传 None
         """
         self.key = key
+        self.values = values
         self.next_layer = next_layer
 
     # ------------------------------------------------------------------ #
