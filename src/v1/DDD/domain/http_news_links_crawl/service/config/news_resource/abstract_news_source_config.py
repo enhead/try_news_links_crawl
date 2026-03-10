@@ -15,11 +15,11 @@ from typing import Any, TYPE_CHECKING
 
 from v1.DDD.domain.http_news_links_crawl.model.entity.news_source_metadata import NewsSourceMetadata
 from v1.DDD.domain.http_news_links_crawl.model.entity.response_parse_result_entity import ResponseParseResultEntity
-from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.request_parameter import RequestParameter
+from v1.DDD.infrastructure.http.request_parameter import RequestParameter
 
 if TYPE_CHECKING:
     from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import LayerSchema
-    from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.response import Response
+    from v1.DDD.infrastructure.http.response import Response
 
 
 class AbstractNewsSourceConfig(ABC):

@@ -44,6 +44,7 @@ class SequentialLayerConfig:
     step: int = 1
     max_consecutive_empty: int = 2
     max_consecutive_duplicate: int = 2
+    max_pages: int | None = None  # 最大页码限制,None 表示无限制
 
 
 @CrawlLayerFactory.register(LayerType.SEQUENTIAL)
@@ -67,6 +68,7 @@ class SequentialLayer(AbstractCrawlLayer):
         self.step: int = config.step
         self.max_consecutive_empty: int = config.max_consecutive_empty
         self.max_consecutive_duplicate: int = config.max_consecutive_duplicate
+        self.max_pages: int | None = config.max_pages
         self.node_class: type[AbstractCrawlNode] = config.node_class
 
     def _update_prune_state(self, result: CrawlNodeResultEntity, state: PruneState) -> None:
@@ -92,23 +94,48 @@ class SequentialLayer(AbstractCrawlLayer):
     # TODO：待探究：这里其实都还是顺序同步的跑，还没有上并发
     async def execute(self, factor: LayerFactorEntity) -> CrawlNodeResultEntity:
         """顺序翻页，每个节点单独去重，支持剪枝。"""
+        logger.info(
+            f"开始顺序层翻页: key={self.key}, start={self.start}, step={self.step}, "
+            f"max_pages={self.max_pages}, max_empty={self.max_consecutive_empty}, "
+            f"max_duplicate={self.max_consecutive_duplicate}"
+        )
+
         current_value = self.start
         all_results: list[CrawlNodeResultEntity] = []
         state = PruneState()
+        pages_crawled = 0
 
         while True:
+            # 检查是否达到最大页码限制
+            if self.max_pages is not None and pages_crawled >= self.max_pages:
+                logger.info(f"达到最大页码限制 {self.max_pages}，终止翻页: {self.key}={current_value}")
+                break
+
             new_factor = factor.with_param(self.key, current_value)
             node = self.node_class(new_factor)
             result = await node.execute()
 
             all_results.append(result)
             self._update_prune_state(result, state)
+            pages_crawled += 1
+
+            logger.debug(
+                f"页面完成 [{pages_crawled}]: {self.key}={current_value}, "
+                f"发现={len(result.urls_found)}, 新增={len(result.urls_new)}, "
+                f"重复率={result.exist_ratio:.2%}, 空页计数={state.consecutive_empty}, "
+                f"重复页计数={state.consecutive_duplicate}"
+            )
 
             should_stop, reason = self.should_prune(state)
             if should_stop:
-                logger.debug(f"{reason}，终止: {self.key}={current_value}")
+                logger.info(f"剪枝终止: {reason}, 最后页码: {self.key}={current_value}")
                 break
 
             current_value += self.step
 
-        return CrawlNodeResultEntity.merge_all(all_results)
+        merged = CrawlNodeResultEntity.merge_all(all_results)
+        logger.info(
+            f"顺序层完成: key={self.key}, 总页数={pages_crawled}, "
+            f"总发现={len(merged.urls_found)}, 总新增={len(merged.urls_new)}"
+        )
+        return merged

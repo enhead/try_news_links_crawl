@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from v1.DDD.domain.http_news_links_crawl.repository.base_news_links_crawl_repository import INewsCrawlRepository
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.abstract_news_source_config import \
     AbstractNewsSourceConfig
-from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.httpx_adapter import HttpAdapter
+from v1.DDD.infrastructure.http.httpx_adapter import HttpAdapter
 
 
 @dataclass(frozen=True)

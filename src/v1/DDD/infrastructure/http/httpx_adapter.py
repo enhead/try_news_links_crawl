@@ -23,8 +23,8 @@ from tenacity import (
     wait_fixed,
 )
 
-from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.request_parameter import RequestParameter
-from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.response import Response
+from v1.DDD.infrastructure.http.request_parameter import RequestParameter
+from v1.DDD.infrastructure.http.response import Response
 
 logger = logging.getLogger(__name__)
 
@@ -74,17 +74,44 @@ class HttpAdapter:
             response = await adapter.send(request_params)
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        timeout: float = 30.0,
+        connect_timeout: float = 5.0,
+        read_timeout: float = 15.0,
+        write_timeout: float = 5.0,
+        pool_timeout: float = 5.0,
+        max_connections: int = 20,
+        max_keepalive_connections: int = 10,
+    ) -> None:
+        """
+        初始化 HTTP 适配器
+
+        Args:
+            timeout: 默认总超时时间（秒）
+            connect_timeout: 连接超时时间（秒）
+            read_timeout: 读取超时时间（秒）
+            write_timeout: 写入超时时间（秒）
+            pool_timeout: 连接池获取超时时间（秒）
+            max_connections: 最大连接数
+            max_keepalive_connections: 最大保持连接数
+        """
         # AsyncClient 在此处创建一次，后续所有 send() 共用同一连接池。
         # 连接复用避免了每次请求都重新 TCP/TLS 握手的开销。
         self._client = httpx.AsyncClient(
             # 连接池上限：防止对同一站点开太多并发连接，被对方封 IP
             limits=httpx.Limits(
-                max_connections=20,
-                max_keepalive_connections=10,
+                max_connections=max_connections,
+                max_keepalive_connections=max_keepalive_connections,
             ),
             # 全局默认超时，可被 RequestParameter.timeout 覆盖
-            timeout=httpx.Timeout(connect=5.0, read=15.0),
+            timeout=httpx.Timeout(
+                timeout,
+                connect=connect_timeout,
+                read=read_timeout,
+                write=write_timeout,
+                pool=pool_timeout,
+            ),
         )
 
     async def close(self) -> None:
@@ -152,7 +179,6 @@ class HttpAdapter:
                 method=request_config.method,
                 url=request_config.url,
                 headers=request_config.headers,
-                cookies=request_config.cookies,
                 params=request_config.params or None,
                 json=request_config.json_body,
                 data=request_config.form_data,

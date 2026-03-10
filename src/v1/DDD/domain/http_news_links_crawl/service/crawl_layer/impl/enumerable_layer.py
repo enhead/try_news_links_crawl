@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_factor_entity import LayerFactorEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import CrawlNodeResultEntity
 from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.abstract_layer import AbstractCrawlLayer
@@ -15,6 +17,8 @@ from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_facto
     CrawlLayerFactory,
     LayerType,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @CrawlLayerFactory.register(LayerType.ENUMERABLE)
@@ -36,14 +40,26 @@ class EnumerableLayer(AbstractCrawlLayer):
     async def execute(self, factor: LayerFactorEntity) -> CrawlNodeResultEntity:
         """
         遍历所有值，递归驱动下层，汇总结果。
-
-
         """
+        logger.info(f"开始枚举层遍历: key={self.key}, 总数={len(self.values)}, values={self.values}")
+
         children_results: list[CrawlNodeResultEntity] = []
 
-        for value in self.values:
+        for idx, value in enumerate(self.values, 1):
+            logger.debug(f"处理枚举值 [{idx}/{len(self.values)}]: {self.key}={value}")
+
             new_factor = factor.with_param(self.key, value)
             child_result = await self.next_layer.execute(new_factor)
             children_results.append(child_result)
 
-        return CrawlNodeResultEntity.merge_all(children_results)
+            logger.debug(
+                f"枚举值完成 [{idx}/{len(self.values)}]: {self.key}={value}, "
+                f"发现={len(child_result.urls_found)}, 新增={len(child_result.urls_new)}"
+            )
+
+        merged = CrawlNodeResultEntity.merge_all(children_results)
+        logger.info(
+            f"枚举层完成: key={self.key}, "
+            f"总发现={len(merged.urls_found)}, 总新增={len(merged.urls_new)}"
+        )
+        return merged

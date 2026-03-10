@@ -15,7 +15,7 @@ from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity i
     CrawlNodeResultEntity,
     DiscoveredNewsLinkUrl,
 )
-from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.http.httpx_adapter import (
+from v1.DDD.infrastructure.http.httpx_adapter import (
     HttpRequestError,
     HttpStatusError,
 )
@@ -88,9 +88,12 @@ class DefaultCrawlNode(AbstractCrawlNode):
         # 构建请求参数
         request_params = context.source_config.build_request(params)
 
+        logger.info(f"发送请求: url={request_params.url}, params={params}")
+
         # 发送 HTTP 请求
         try:
             response = await context.http_adapter.send(request_params)
+            logger.info(f"请求成功: url={request_params.url}, status={response.status_code}")
         except HttpRequestError as e:
             logger.error(
                 "爬取节点网络错误: url=%s, params=%s, cause=%s",
@@ -118,6 +121,10 @@ class DefaultCrawlNode(AbstractCrawlNode):
             )
             for url in parse_result.urls
         ]
+
+        logger.debug(
+            f"解析完成: url={request_params.url}, 提取链接数={len(urls_found)}, 类别={category}"
+        )
 
         if parse_result.errors:
             logger.warning(
