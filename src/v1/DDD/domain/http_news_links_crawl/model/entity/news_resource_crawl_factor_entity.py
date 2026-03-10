@@ -13,6 +13,4 @@ class NewsResourceCrawlFactorEntity:
 
     封装单次爬取所需的完整参数
     """
-
-    root_layer: AbstractCrawlLayer
     context: CrawlContext
