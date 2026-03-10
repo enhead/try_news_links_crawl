@@ -14,7 +14,8 @@ wheels/
 /.spec-workflow/
 /.serena/
 
-
+# 运行时产生
+*.log
 
 
 #claude相关
@@ -24,3 +25,5 @@ CLAUDE.md
 # 或者更明确的写法
 **/CLAUDE.md
 /.env
+/test-output/
+/.playwright-mcp/
