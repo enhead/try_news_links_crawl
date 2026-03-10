@@ -13,11 +13,11 @@ from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity i
 from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.abstract_layer import AbstractCrawlLayer
 from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import (
     CrawlLayerFactory,
-    LayerTypeConstants,
+    LayerType,
 )
 
 
-@CrawlLayerFactory.register(LayerTypeConstants.ENUMERABLE)
+@CrawlLayerFactory.register(LayerType.ENUMERABLE)
 class EnumerableLayer(AbstractCrawlLayer):
     """
     枚举层：遍历固定值列表。
@@ -30,7 +30,7 @@ class EnumerableLayer(AbstractCrawlLayer):
         values: list[str],
         next_layer: AbstractCrawlLayer | None = None,
     ) -> None:
-        super().__init__(key, next_layer)
+        super().__init__(key, values, next_layer)
         self.values: list[str] = values
 
     async def execute(self, factor: LayerFactorEntity) -> CrawlNodeResultEntity:

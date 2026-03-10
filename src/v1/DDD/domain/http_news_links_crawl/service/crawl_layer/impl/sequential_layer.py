@@ -23,7 +23,7 @@ from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.crawl_node.abstract
 )
 from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import (
     CrawlLayerFactory,
-    LayerTypeConstants,
+    LayerType,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class SequentialLayerConfig:
     max_consecutive_duplicate: int = 2
 
 
-@CrawlLayerFactory.register(LayerTypeConstants.SEQUENTIAL)
+@CrawlLayerFactory.register(LayerType.SEQUENTIAL)
 class SequentialLayer(AbstractCrawlLayer):
     """顺序翻页层，叶子层。"""
 
@@ -56,7 +56,7 @@ class SequentialLayer(AbstractCrawlLayer):
         values: SequentialLayerConfig | dict[str, Any],
         next_layer: AbstractCrawlLayer | None = None,
     ) -> None:
-        super().__init__(key, next_layer=None)
+        super().__init__(key, values, next_layer=None)
 
         if isinstance(values, dict):
             config = SequentialLayerConfig(**values)
