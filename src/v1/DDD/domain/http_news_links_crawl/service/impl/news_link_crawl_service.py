@@ -6,6 +6,7 @@ from v1.DDD.domain.http_news_links_crawl.model.entity.crawl_result_entity import
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_factor_entity import LayerFactorEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.news_resource_crawl_factor_entity import NewsResourceCrawlFactorEntity
 from v1.DDD.domain.http_news_links_crawl.service.base_news_link_crawl_service import INewsLinkCrawlService
+from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import CrawlLayerFactory
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,14 @@ class NewsLinkCrawlService(INewsLinkCrawlService):
         """
         logger.info("开始执行爬取")
 
+        source_config = crawl_factor.context.source_config
+        # 构架layer的具体实现
+        root_layer = CrawlLayerFactory.build(source_config.layer_schema)
         # 创建初始 Factor（空参数）
         initial_factor = LayerFactorEntity.create(crawl_factor.context)
 
         # 执行爬取
-        layer_result = await crawl_factor.root_layer.execute(initial_factor)
+        layer_result = await root_layer.execute(initial_factor)
 
         logger.info(
             f"爬取完成: "
