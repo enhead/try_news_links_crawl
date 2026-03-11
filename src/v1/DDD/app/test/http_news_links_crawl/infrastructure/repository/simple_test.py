@@ -38,36 +38,20 @@ async def test_repository():
     settings = MySQLSettings()
     engine = create_async_engine(settings.url, echo=False)
 
-    # 2. 创建会话
+    # 2. 创建会话工厂
     async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+    # 3. 创建 Repository（传递 session_factory）
+    repository = NewsLinksCrawlRepository(session_factory=async_session_maker)
+
+    print("\n✅ 数据库连接成功")
+
+    # ========== 测试 1：插入测试数据 ==========
+    print("\n" + "=" * 60)
+    print("测试 1：插入测试新闻源")
+    print("=" * 60)
+
     async with async_session_maker() as session:
-        # 3. 创建 DAO 和 Repository
-        news_source_dao = NewsSourceDAO(session)
-        news_link_dao = NewsLinkDAO(session)
-        repository = NewsLinksCrawlRepository(news_link_dao, news_source_dao)
-
-        print("\n✅ 数据库连接成功")
-
-        # ========== 测试 1：插入测试数据 ==========
-        print("\n" + "=" * 60)
-        print("测试 1：插入测试新闻源")
-        print("=" * 60)
-
-        # 如果存在会报错，这里稍微改一下
-        # test_source = NewsSourceModel(
-        #     resource_id="test_source_001",
-        #     name="测试新闻源",
-        #     domain="test.com",
-        #     url="https://test.com",
-        #     country="SG",
-        #     language="en",
-        #     status=0,
-        # )
-        # session.add(test_source)
-        # await session.commit()
-        # print("✅ 测试新闻源插入成功")
-
         # 存在重复：忽略；不存在：插入；不会有异常
         stmt = insert(NewsSourceModel).values(
             resource_id="test_source_001",
@@ -131,7 +115,11 @@ async def test_repository():
         ]
 
         aggregate = NewsLinkBatchAggregate(metadata=metadata, links=links)
-        save_result = await repository.save_batch(aggregate)
+
+        # 批量保存需要在事务中执行
+        async with async_session_maker() as session:
+            async with session.begin():
+                save_result = await repository.save_batch(session, aggregate)
 
         print(f"✅ 保存成功：{save_result.saved_count} 条")
         if save_result.skipped_urls:
@@ -178,9 +166,7 @@ async def test_repository():
         print("\n" + "=" * 60)
         print("清理测试数据")
         print("=" * 60)
-
-        await session.rollback()  # 回滚所有更改
-        print("✅ 测试数据已回滚")
+        print("✅ 测试数据已完成（无需清理，数据已提交）")
 
     await engine.dispose()
 
