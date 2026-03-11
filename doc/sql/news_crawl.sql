@@ -88,6 +88,7 @@ CREATE TABLE `news_link`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci
     COMMENT = '新闻链接主表，记录爬虫发现的所有链接及其流水线状态';
+# 健康检查的记录肯定是不能放在整个表里
 
 
 -- ============================================================
@@ -145,33 +146,3 @@ CREATE TABLE `news_content`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci
     COMMENT = '新闻内容表，1:1 对应 news_link，仅在解析成功后写入。parse_error 在 is_parse=4 时由应用层同步写入本表，便于故障排查。';
-
--- ============================================================
--- 4. news_source_health_check — 新闻源健康检查记录表
---    职责：记录每次健康检查的结果，用于监控新闻源配置是否正常工作
---    写入方：NewsSourceHealthCheckService 定期执行检查后写入
--- ============================================================
-DROP TABLE IF EXISTS `news_source_health_check`;
-CREATE TABLE `news_source_health_check`
-(
-    `id`                INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `resource_id`       VARCHAR(255) NOT NULL COMMENT '关联 news_source.resource_id',
-
-    -- 检查结果
-    `check_status`      VARCHAR(20)  NOT NULL COMMENT 'success-成功 http_error-HTTP错误 parse_error-解析错误 empty_result-空结果',
-    `links_found`       INT          NOT NULL DEFAULT 0 COMMENT '本次检查发现的链接数',
-    `http_status_code`  INT          NULL COMMENT 'HTTP 状态码',
-    `error_message`     TEXT         NULL COMMENT '错误详情',
-
-    -- 时间
-    `checked_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '检查执行时间',
-
-    PRIMARY KEY (`id`),
-    INDEX `idx_resource_id` (`resource_id`),
-    INDEX `idx_check_status` (`check_status`),
-    INDEX `idx_checked_at` (`checked_at`)
-
-) ENGINE = InnoDB
-  DEFAULT CHARSET = utf8mb4
-  COLLATE = utf8mb4_unicode_ci
-    COMMENT = '新闻源健康检查记录表：记录每次健康检查的结果，用于监控和自动标记异常源';

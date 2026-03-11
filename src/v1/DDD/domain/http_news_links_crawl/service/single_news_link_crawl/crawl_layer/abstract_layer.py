@@ -10,6 +10,9 @@ Layer 自驱动原则：
   每层负责遍历自己维度的值，对每个值追加到 factor.params 后，
   调用 next_layer.execute(new_factor) 向下递归；
   叶子层直接交给 CrawlNode 执行。
+
+
+TODO：新增职责健康检查，需要想个策略
 """
 
 from __future__ import annotations

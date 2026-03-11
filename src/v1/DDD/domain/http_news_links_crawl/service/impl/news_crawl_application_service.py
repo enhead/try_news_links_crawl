@@ -183,7 +183,6 @@ class NewsCrawlApplicationService(INewsCrawlApplicationService):
                     f"详情={e}"
                 )
                 failed_count += 1
-                # TODO: 集成健康检查机制 - 记录连续失败次数，达到阈值后自动标记异常
                 # TODO: 完善错误处理 - 提供更详细的失败信息（是否需要返回失败列表？）
                 # 继续处理其他源，不中断
 
