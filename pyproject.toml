@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "asyncmy>=0.2.11",
     "bs4>=0.0.2",
+    "dependency-injector>=4.48.3",
     "httpx>=0.28.1",
     "pydantic-settings>=2.13.1",
     "pytest>=9.0.2",

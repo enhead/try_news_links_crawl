@@ -25,5 +25,6 @@ CLAUDE.md
 # 或者更明确的写法
 **/CLAUDE.md
 /.env
+/.playwright-mcp/
 /test-output/
 /.playwright-mcp/
