@@ -18,7 +18,7 @@ from v1.DDD.domain.http_news_links_crawl.model.entity.response_parse_result_enti
 from v1.DDD.infrastructure.http.request_parameter import RequestParameter
 
 if TYPE_CHECKING:
-    from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import LayerSchema
+    from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.factory.layer_factory import LayerSchema
     from v1.DDD.infrastructure.http.response import Response
 
 

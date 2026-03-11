@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 
 from v1.DDD.domain.http_news_links_crawl.model.entity.crawl_context import CrawlContext
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.abstract_layer import AbstractCrawlLayer
 
 
 @dataclass

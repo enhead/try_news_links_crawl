@@ -44,7 +44,7 @@ pytest src/v1/DDD/app/test/http_news_links_crawl/domain/service/impl/test_news_l
 pytest src/v1/DDD/app/test/http_news_links_crawl/domain/service/impl/test_news_link_crawl_service.py::test_execute_crawl_multiple_categories -v -s --log-cli-level=INFO
 ```
 说明：
-- --log-cli-level=INFO 显示 INFO 级别日志
+- --log-cli-level=INFO 显示 INFO 级别日志，这里换成debug更详细
 - 可以看到每个类别的爬取进度
 - 可以看到每页的请求URL和统计信息
 - 可以看到剪枝机制的触发情况
@@ -91,17 +91,21 @@ from v1.DDD.domain.http_news_links_crawl.model.valobj.response_parse_result_stat
 from v1.DDD.domain.http_news_links_crawl.repository.base_news_links_crawl_repository import INewsCrawlRepository
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.abstract_news_source_config import AbstractNewsSourceConfig
 from v1.DDD.infrastructure.http.response import Response
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.crawl_node.impl.default_crawl_node import DefaultCrawlNode
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.factory.layer_factory import LayerSchema, LayerType
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.impl.sequential_layer import SequentialLayerConfig
-from v1.DDD.domain.http_news_links_crawl.service.impl.news_link_crawl_service import NewsLinkCrawlService
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.crawl_node.impl.default_crawl_node import DefaultCrawlNode
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.factory.layer_factory import LayerSchema, LayerType
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.impl.sequential_layer import SequentialLayerConfig
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.impl.news_link_crawl_service import NewsLinkCrawlService
 from v1.DDD.infrastructure.http.httpx_adapter import HttpAdapter
 from v1.DDD.infrastructure.http.request_parameter import RequestParameter
 
 # 导入 layer 实现以触发装饰器注册
-from v1.DDD.domain.http_news_links_crawl.service.crawl_layer.impl import enumerable_layer, sequential_layer
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.impl.enumerable_layer import EnumerableLayer
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.impl.sequential_layer import SequentialLayer
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.impl.mapping_layer import MappingLayer
 
 
+
+# 问题根因：测试文件第101行有注释"导入 layer 实现以触发装饰器注册"，但缺少实际的导入语句。这些 layer 类使用了 @CrawlLayerFactory.register() 装饰器进行自注册，只有在类被导入时装饰器才会执行。
 class JawaPosNewsSourceConfig(AbstractNewsSourceConfig):
     """JawaPos 新闻源配置实现"""
 
@@ -152,6 +156,15 @@ class JawaPosNewsSourceConfig(AbstractNewsSourceConfig):
 
 class MockRepository(INewsCrawlRepository):
     """Mock 仓储实现,用于测试"""
+
+    async def save_health_check_record(self, record: "HealthCheckRecordEntity") -> None:
+        pass
+
+    async def get_recent_health_checks(self, resource_id: str, limit: int = 10) -> list["HealthCheckRecordEntity"]:
+        pass
+
+    async def update_source_status_by_health(self, resource_id: str, status: "NewsSourceStatusVO") -> None:
+        pass
 
     async def check_exists_batch(self, urls_or_aggregate):
         """模拟去重,全部返回为新链接"""
