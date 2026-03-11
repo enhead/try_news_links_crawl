@@ -1,13 +1,17 @@
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
+from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import CrawlNodeResultEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.news_source_metadata import NewsSourceMetadata
 from v1.DDD.domain.http_news_links_crawl.repository.base_news_links_crawl_repository import (
     INewsCrawlRepository,
     BatchSaveResult,
 )
-from v1.DDD.infrastructure.persistent.dao import NewsLinkDAO, NewsSourceDAO
+from v1.DDD.infrastructure.persistent.dao import CrawlLogDAO, NewsLinkDAO, NewsSourceDAO
 from v1.DDD.infrastructure.persistent.models.mapper import (
+    CrawlLogMapper,
     NewsLinkMapper,
     NewsSourceMapper,
 )
@@ -36,6 +40,7 @@ class NewsLinksCrawlRepository(INewsCrawlRepository):
         # 创建 DAO 实例（DAO 无状态，可以复用）
         self._news_link_dao = NewsLinkDAO()
         self._news_source_dao = NewsSourceDAO()
+        self._crawl_log_dao = CrawlLogDAO()
 
     # ------------------------------------------------------------------
     # 新闻源元数据查询
@@ -94,3 +99,25 @@ class NewsLinksCrawlRepository(INewsCrawlRepository):
         skipped_urls = [r["url"] for r in records[saved_count:]] if saved_count < len(records) else []
 
         return BatchSaveResult(saved_count=saved_count, skipped_urls=skipped_urls)
+
+    # ------------------------------------------------------------------
+    # 爬取日志保存
+    # ------------------------------------------------------------------
+
+    async def save_crawl_log(
+        self,
+        session: AsyncSession,
+        resource_id: str,
+        result: CrawlNodeResultEntity,
+        started_at: datetime,
+        finished_at: datetime,
+    ) -> int:
+        """保存爬取日志（事务方法）"""
+        record = CrawlLogMapper.result_to_insert_record(
+            resource_id=resource_id,
+            result=result,
+            started_at=started_at,
+            finished_at=finished_at,
+        )
+        log_id = await self._crawl_log_dao.insert(session, record)
+        return log_id
