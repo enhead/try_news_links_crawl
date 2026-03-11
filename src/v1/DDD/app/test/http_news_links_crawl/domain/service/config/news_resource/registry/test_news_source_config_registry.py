@@ -13,6 +13,9 @@ test_has_config - 测试检查配置是否存在
 test_list_registered - 测试列出已注册配置
 test_clear_cache - 测试清除缓存
 test_clear_registry - 测试清除注册表
+test_build_health_check_params_list_default_strategy - 测试健康检查参数生成（默认策略）
+test_build_health_check_params_list_explicit_config - 测试健康检查参数生成（显式配置）
+test_build_health_check_params_list_skip_layer - 测试健康检查参数生成（跳过层）
 
 【运行命令】
 pytest src/v1/DDD/app/test/http_news_links_crawl/domain/service/config/news_resource/registry/test_news_source_config_registry.py                                        # 运行所有测试
@@ -104,6 +107,22 @@ class MockNewsSourceConfig(AbstractNewsSourceConfig):
 
     def __init__(self, metadata: NewsSourceMetadata, layer_schema=None, template_request_config=None):
         """重写初始化方法,简化测试"""
+        # 如果没有提供 layer_schema，使用默认测试配置
+        if layer_schema is None:
+            layer_schema = [
+                {
+                    "type": "enumerable",
+                    "param_name": "category",
+                    "values": ["politics", "tech", "sports"]
+                },
+                {
+                    "type": "sequential",
+                    "param_name": "page",
+                    "start": 1,
+                    "end": 10
+                }
+            ]
+
         super().__init__(metadata, layer_schema, template_request_config)
         self.metadata = metadata
         self.layer_schema = layer_schema
@@ -410,3 +429,73 @@ def test_clear_registry():
     assert len(NewsSourceConfigRegistry.list_registered()) == 0
 
     print(f"\n[OK] 注册表清除成功")
+
+
+def test_build_health_check_params_list_default_strategy(mock_metadata):
+    """测试健康检查参数生成：验证默认策略（第一层枚举遍历）"""
+    layer_schema = [
+        {"type": "enumerable", "param_name": "category", "values": ["politics", "tech", "sports"]},
+        {"type": "sequential", "param_name": "page", "start": 1, "end": 10}
+    ]
+
+    config = MockNewsSourceConfig(mock_metadata, layer_schema=layer_schema)
+
+    # 生成健康检查参数列表
+    params_list = config.build_health_check_params_list()
+
+    # 验证：应该遍历第一层枚举的所有值
+    assert len(params_list) == 3
+    assert params_list[0] == {"category": "politics", "page": 1}
+    assert params_list[1] == {"category": "tech", "page": 1}
+    assert params_list[2] == {"category": "sports", "page": 1}
+
+    print(f"\n[OK] 默认策略生成参数成功: {params_list}")
+
+
+def test_build_health_check_params_list_explicit_config(mock_metadata):
+    """测试健康检查参数生成：验证显式配置（多层遍历）"""
+    layer_schema = [
+        {"type": "enumerable", "param_name": "cat1", "values": ["a", "b"],
+         "health_check": "all"},
+        {"type": "enumerable", "param_name": "cat2", "values": ["x", "y"],
+         "health_check": "all"},
+        {"type": "sequential", "param_name": "page", "start": 1}
+    ]
+
+    config = MockNewsSourceConfig(mock_metadata, layer_schema=layer_schema)
+
+    # 生成健康检查参数列表
+    params_list = config.build_health_check_params_list()
+
+    # 验证：应该生成笛卡尔积 2x2=4
+    assert len(params_list) == 4
+    assert {"cat1": "a", "cat2": "x", "page": 1} in params_list
+    assert {"cat1": "a", "cat2": "y", "page": 1} in params_list
+    assert {"cat1": "b", "cat2": "x", "page": 1} in params_list
+    assert {"cat1": "b", "cat2": "y", "page": 1} in params_list
+
+    print(f"\n[OK] 显式配置生成参数成功: {params_list}")
+
+
+def test_build_health_check_params_list_skip_layer(mock_metadata):
+    """测试健康检查参数生成：验证跳过层（health_check="first"）"""
+    layer_schema = [
+        {"type": "enumerable", "param_name": "cat1", "values": ["news", "blog"],
+         "health_check": "all"},
+        {"type": "enumerable", "param_name": "cat2", "values": ["local", "world"],
+         "health_check": "first"},  # 显式跳过
+        {"type": "sequential", "param_name": "page", "start": 1}
+    ]
+
+    config = MockNewsSourceConfig(mock_metadata, layer_schema=layer_schema)
+
+    # 生成健康检查参数列表
+    params_list = config.build_health_check_params_list()
+
+    # 验证：只遍历 cat1，cat2 取第一个值
+    assert len(params_list) == 2
+    assert params_list[0] == {"cat1": "news", "cat2": "local", "page": 1}
+    assert params_list[1] == {"cat1": "blog", "cat2": "local", "page": 1}
+
+    print(f"\n[OK] 跳过层策略生成参数成功: {params_list}")
+

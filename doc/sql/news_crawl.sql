@@ -12,6 +12,7 @@ USE `news_crawl`;
 --    职责：描述一个新闻源"是什么"，静态配置，低频变更
 --    写入方：人工初始化；status 字段由程序在解析持续异常时自动更新
 -- ------------------------------------------------------------
+DROP TABLE IF EXISTS `news_source`;
 CREATE TABLE `news_source`
 (
     `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -35,10 +36,11 @@ CREATE TABLE `news_source`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci
-    COMMENT = '新闻源元数据表，仅存静态描述信息；请求配置（RequestConfig）与 Layer 结构在代码中维护，不在此处存储';
+    COMMENT = '新闻源元数据表，仅存静态描述信息；请求配置（RequestConfig）与 Layer 结构在代码中维护，不在此处存储；这里图省事';
 
 
 
+DROP TABLE IF EXISTS `news_link`;
 CREATE TABLE `news_link`
 (
     `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -95,6 +97,7 @@ CREATE TABLE `news_link`
 --    主键与 news_link.id 完全对应（1:1），无独立自增
 --    无显式外键约束，应用层保证 id 存在于 news_link
 -- ============================================================
+DROP TABLE IF EXISTS `news_content`;
 CREATE TABLE `news_content`
 (
     `id`            INT UNSIGNED NOT NULL COMMENT '与 news_link.id 完全对应，非自增',
@@ -142,3 +145,33 @@ CREATE TABLE `news_content`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci
     COMMENT = '新闻内容表，1:1 对应 news_link，仅在解析成功后写入。parse_error 在 is_parse=4 时由应用层同步写入本表，便于故障排查。';
+
+-- ============================================================
+-- 4. news_source_health_check — 新闻源健康检查记录表
+--    职责：记录每次健康检查的结果，用于监控新闻源配置是否正常工作
+--    写入方：NewsSourceHealthCheckService 定期执行检查后写入
+-- ============================================================
+DROP TABLE IF EXISTS `news_source_health_check`;
+CREATE TABLE `news_source_health_check`
+(
+    `id`                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `resource_id`       VARCHAR(255) NOT NULL COMMENT '关联 news_source.resource_id',
+
+    -- 检查结果
+    `check_status`      VARCHAR(20)  NOT NULL COMMENT 'success-成功 http_error-HTTP错误 parse_error-解析错误 empty_result-空结果',
+    `links_found`       INT          NOT NULL DEFAULT 0 COMMENT '本次检查发现的链接数',
+    `http_status_code`  INT          NULL COMMENT 'HTTP 状态码',
+    `error_message`     TEXT         NULL COMMENT '错误详情',
+
+    -- 时间
+    `checked_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '检查执行时间',
+
+    PRIMARY KEY (`id`),
+    INDEX `idx_resource_id` (`resource_id`),
+    INDEX `idx_check_status` (`check_status`),
+    INDEX `idx_checked_at` (`checked_at`)
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci
+    COMMENT = '新闻源健康检查记录表：记录每次健康检查的结果，用于监控和自动标记异常源';

@@ -121,6 +121,184 @@ class AbstractNewsSourceConfig(ABC):
             headers=headers,
         )
 
+
+    # 原本想给健康检查用的但是发现其实用处不大
+    def build_health_check_params_list(self) -> list[dict[str, Any]]:
+        """
+        构建健康检查参数列表（支持参数化配置）
+
+        策略：
+        1. 如果层有 `health_check` 字段，按字段指示执行：
+           - "all": 遍历该层所有值
+           - "first": 只取该层第一个值
+        2. 如果没有 `health_check` 字段，使用默认策略：
+           - 第一个枚举层：遍历所有值（相当于 "all"）
+           - 其他枚举层：只取第一个值（相当于 "first"）
+           - 顺序层：只取起始值（相当于 "first"）
+
+        支持多层遍历，自动生成笛卡尔积。
+
+        Returns:
+            参数字典列表，每个字典对应一次健康检查请求
+
+        Examples:
+            >>> # 单枚举层（默认策略：遍历所有值）
+            >>> layer_schema = [
+            ...     {"type": "enumerable", "param_name": "category",
+            ...      "values": ["politics", "tech", "sports"]},
+            ...     {"type": "sequential", "param_name": "page", "start": 1}
+            ... ]
+            >>> config.build_health_check_params_list()
+            [
+                {"category": "politics", "page": 1},
+                {"category": "tech", "page": 1},
+                {"category": "sports", "page": 1}
+            ]
+
+            >>> # 多枚举层（第二层默认只取第一个）
+            >>> layer_schema = [
+            ...     {"type": "enumerable", "param_name": "cat1", "values": ["news", "blog"]},
+            ...     {"type": "enumerable", "param_name": "cat2", "values": ["local", "world"]},
+            ...     {"type": "sequential", "param_name": "page", "start": 1}
+            ... ]
+            >>> config.build_health_check_params_list()
+            [
+                {"cat1": "news", "cat2": "local", "page": 1},
+                {"cat1": "blog", "cat2": "local", "page": 1}
+            ]
+
+            >>> # 显式配置多层遍历（笛卡尔积）
+            >>> layer_schema = [
+            ...     {"type": "enumerable", "param_name": "cat1", "values": ["a", "b"],
+            ...      "health_check": "all"},
+            ...     {"type": "enumerable", "param_name": "cat2", "values": ["x", "y"],
+            ...      "health_check": "all"},
+            ...     {"type": "sequential", "param_name": "page", "start": 1}
+            ... ]
+            >>> config.build_health_check_params_list()
+            [
+                {"cat1": "a", "cat2": "x", "page": 1},
+                {"cat1": "a", "cat2": "y", "page": 1},
+                {"cat1": "b", "cat2": "x", "page": 1},
+                {"cat1": "b", "cat2": "y", "page": 1}
+            ]
+        """
+        if not self.layer_schema:
+            return [{}]
+
+        # 查找需要遍历的层
+        traverse_layers = self._find_traverse_layers()
+
+        if not traverse_layers:
+            # 如果没有需要遍历的层，返回单个默认参数
+            return [self._build_default_params()]
+
+        # 生成参数组合（笛卡尔积）
+        return self._generate_params_combinations(traverse_layers)
+
+    def _find_traverse_layers(self) -> list[dict]:
+        """
+        查找需要遍历的层
+
+        根据 `health_check` 字段或默认策略确定哪些层需要遍历所有值。
+
+        Returns:
+            需要遍历的层列表
+        """
+        traverse_layers = []
+        first_enum_found = False
+
+        for layer in self.layer_schema:
+            # 检查是否有显式配置
+            health_check = layer.get("health_check")
+
+            if health_check == "all":
+                # 显式配置为遍历所有值
+                traverse_layers.append(layer)
+
+            elif health_check == "first":
+                # 显式配置为只取第一个，跳过
+                continue
+
+            elif layer["type"] == "enumerable" and not first_enum_found:
+                # 默认策略：第一个枚举层遍历所有值
+                traverse_layers.append(layer)
+                first_enum_found = True
+
+        return traverse_layers
+
+    def _generate_params_combinations(
+        self, traverse_layers: list[dict]
+    ) -> list[dict[str, Any]]:
+        """
+        生成参数组合（笛卡尔积）
+
+        对需要遍历的层生成所有可能的组合，其他层使用默认值。
+
+        Args:
+            traverse_layers: 需要遍历的层列表
+
+        Returns:
+            参数字典列表
+        """
+        import itertools
+
+        if not traverse_layers:
+            return [self._build_default_params()]
+
+        # 构建笛卡尔积的输入
+        # 每个层的所有值：[["a", "b"], ["x", "y"]]
+        layer_values = []
+        layer_param_names = []
+
+        for layer in traverse_layers:
+            if layer["type"] == "enumerable":
+                layer_values.append(layer["values"])
+                layer_param_names.append(layer["param_name"])
+
+        # 生成笛卡尔积
+        # itertools.product(["a", "b"], ["x", "y"]) -> [("a", "x"), ("a", "y"), ("b", "x"), ("b", "y")]
+        combinations = list(itertools.product(*layer_values))
+
+        # 将笛卡尔积转换为参数字典列表
+        result = []
+        for combination in combinations:
+            # 先构建默认参数（包含所有层的默认值）
+            params = self._build_default_params()
+
+            # 用遍历的值覆盖对应的参数
+            for param_name, value in zip(layer_param_names, combination):
+                params[param_name] = value
+
+            result.append(params)
+
+        return result
+
+    def _build_default_params(self) -> dict[str, Any]:
+        """
+        为所有层构建默认参数（取第一个值/起始值）
+
+        内部方法，用于生成非遍历层的默认参数。
+
+        Returns:
+            默认参数字典
+        """
+        params = {}
+
+        for layer in self.layer_schema:
+            param_name = layer["param_name"]
+
+            if layer["type"] == "enumerable":
+                # 枚举层：取第一个值（防御性检查）
+                if layer.get("values"):
+                    params[param_name] = layer["values"][0]
+
+            elif layer["type"] == "sequential":
+                # 顺序层：取起始值
+                params[param_name] = layer["start"]
+
+        return params
+
     @abstractmethod
     def parse_response(self, response: "Response") -> ResponseParseResultEntity:
         """

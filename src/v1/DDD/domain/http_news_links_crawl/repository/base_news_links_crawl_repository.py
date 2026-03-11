@@ -5,8 +5,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
     from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
     from v1.DDD.domain.http_news_links_crawl.model.entity.news_source_metadata import NewsSourceMetadata
+    from v1.DDD.domain.http_news_links_crawl.model.entity.health_check_record_entity import HealthCheckRecordEntity
+    from v1.DDD.domain.http_news_links_crawl.model.valobj import NewsSourceStatusVO
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +116,7 @@ class INewsCrawlRepository(ABC):
     @abstractmethod
     async def save_batch(
         self,
+        session: "AsyncSession",
         aggregate: "NewsLinkBatchAggregate",
     ) -> BatchSaveResult:
         """
@@ -123,9 +127,65 @@ class INewsCrawlRepository(ABC):
             同一 URL 重复写入不报错，不产生重复行。
 
         Args:
+            session: 数据库会话（用于事务控制）
             aggregate: 包含新闻源配置和待保存链接的聚合对象
 
         Returns:
             BatchSaveResult，含实际写入条数与跳过的重复 URL
+        """
+        ...
+    # ------------------------------------------------------------------
+    # 健康检查
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    async def save_health_check_record(
+        self,
+        session: "AsyncSession",
+        record: "HealthCheckRecordEntity",
+    ) -> None:
+        """
+        保存健康检查记录
+
+        Args:
+            session: 数据库会话（用于事务控制）
+            record: 健康检查记录实体
+        """
+        ...
+
+    @abstractmethod
+    async def get_recent_health_checks(
+        self,
+        session: "AsyncSession",
+        resource_id: str,
+        limit: int = 10,
+    ) -> list["HealthCheckRecordEntity"]:
+        """
+        获取指定新闻源最近的健康检查记录
+
+        Args:
+            session: 数据库会话（用于事务控制）
+            resource_id: 新闻源唯一标识
+            limit: 返回记录数量，默认 10 条
+
+        Returns:
+            健康检查记录列表，按时间倒序排列
+        """
+        ...
+
+    @abstractmethod
+    async def update_source_status_by_health(
+        self,
+        session: "AsyncSession",
+        resource_id: str,
+        status: "NewsSourceStatusVO",
+    ) -> None:
+        """
+        根据健康检查结果更新新闻源状态
+
+        Args:
+            session: 数据库会话（用于事务控制）
+            resource_id: 新闻源唯一标识
+            status: 新的状态值
         """
         ...

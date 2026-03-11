@@ -8,6 +8,13 @@
 
 TODO：待探究：
     - 此处应该是需要导入才会自动注册，没时间了，没法细看，后面需要想想
+
+
+创建配置类 + @register 装饰
+    ↓
+在 __init__.py 中导入（触发注册）：只有导入这个具体实现的配置类文件的时候，才会触发注册
+    ↓
+调用 create_config() 获取单例实例
 """
 
 from typing import Dict, List, Optional, Type
@@ -139,6 +146,73 @@ class NewsSourceConfigRegistry:
             cls._instances.clear()
         else:
             cls._instances.pop(resource_id, None)
+
+    @classmethod
+    def auto_register_from_module(
+        cls,
+        module_paths: str | list[str] | None = None
+    ) -> list[str]:
+        """
+        自动扫描并注册所有新闻源配置类
+
+        通过导入指定模块，触发所有装饰器（@NewsSourceConfigRegistry.register()）的执行
+
+        注意：
+        - 配置类必须在模块的 __init__.py 中导入
+        - 配置类必须使用 @NewsSourceConfigRegistry.register() 装饰器
+
+        Args:
+            module_paths: 要导入的模块路径，支持：
+                - None: 使用默认路径 ["v1.DDD.app.src.resource.news_source"]
+                - str: 单个模块路径（如 "v1.DDD.app.src.resource.news_source"）
+                - list[str]: 多个模块路径数组
+
+        Returns:
+            list[str]: 成功注册的 resource_id 列表
+
+        Raises:
+            ImportError: 模块导入失败
+        """
+        import importlib
+
+        # 默认模块路径
+        default_paths = ["v1.DDD.app.src.resource.news_source"]
+
+        # 标准化为列表
+        if module_paths is None:
+            paths = default_paths
+        elif isinstance(module_paths, str):
+            paths = [module_paths]
+        else:
+            paths = module_paths
+
+        # 记录导入前的注册数量
+        before_count = len(cls._registry)
+        failed_imports = []
+
+        # 逐个导入模块
+        for module_path in paths:
+            try:
+                importlib.import_module(module_path)
+            except ImportError as e:
+                failed_imports.append((module_path, str(e)))
+
+        # 如果有失败的导入，抛出异常
+        if failed_imports:
+            error_details = "\n".join(
+                f"  - {path}: {error}"
+                for path, error in failed_imports
+            )
+            raise ImportError(
+                f"部分模块导入失败:\n{error_details}\n"
+                f"请确保这些模块存在且路径正确"
+            )
+
+        # 计算新注册的数量
+        new_count = len(cls._registry) - before_count
+
+        # 返回所有已注册的 resource_id
+        return cls.list_registered()
 
     @classmethod
     def clear_registry(cls) -> None:

@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
 from v1.DDD.domain.http_news_links_crawl.model.entity.health_check_record_entity import HealthCheckRecordEntity
 from v1.DDD.domain.http_news_links_crawl.model.valobj.health_check_status_vo import HealthCheckStatusVO
 from v1.DDD.domain.http_news_links_crawl.model.valobj.news_source_status_vo import NewsSourceStatusVO
@@ -27,10 +29,17 @@ class NewsSourceHealthCheckService(INewsSourceHealthCheckService):
 
     职责：
     - 执行单个新闻源的健康检查
+    - 管理事务边界（保存记录 + 更新状态）
     - 根据连续失败次数自动标记异常源
     """
 
-    def __init__(self, http_adapter: HttpAdapter, repository: INewsCrawlRepository):
+    def __init__(
+        self,
+        session_factory: async_sessionmaker,
+        http_adapter: HttpAdapter,
+        repository: INewsCrawlRepository,
+    ):
+        self._session_factory = session_factory
         self.http_adapter = http_adapter
         self.repository = repository
 
@@ -45,8 +54,8 @@ class NewsSourceHealthCheckService(INewsSourceHealthCheckService):
         2. 发送 HTTP 请求
         3. 调用 parse_response 解析
         4. 判断检查结果（成功/HTTP错误/解析错误/空结果）
-        5. 保存检查记录到数据库
-        6. 检查是否需要更新 news_source.status（连续失败 3 次）
+        5. 【事务】保存检查记录到数据库
+        6. 【事务】检查是否需要更新 news_source.status（连续失败 3 次）
 
         Args:
             source_config: 新闻源配置
@@ -60,7 +69,34 @@ class NewsSourceHealthCheckService(INewsSourceHealthCheckService):
         test_params = self._build_test_params(source_config)
         logger.debug(f"测试参数: {test_params}")
 
-        # 2 & 3. 发送请求并解析
+        # 2 & 3 & 4. 执行检查（不涉及数据库）
+        record = await self._perform_health_check(source_config, test_params)
+
+        # 5 & 6. 【事务】保存记录 + 更新状态
+        async with self._session_factory() as session:
+            async with session.begin():
+                # 保存检查记录
+                await self.repository.save_health_check_record(session, record)
+                logger.info(f"健康检查记录已保存: {record.check_status.desc}")
+
+                # 检查是否需要更新源状态（连续失败 3 次）
+                await self._update_source_status_if_needed(session, source_config.source_id)
+
+        return record
+
+    async def _perform_health_check(
+        self, source_config: AbstractNewsSourceConfig, test_params: dict[str, Any]
+    ) -> HealthCheckRecordEntity:
+        """
+        执行健康检查（不涉及数据库操作）
+
+        Args:
+            source_config: 新闻源配置
+            test_params: 测试参数
+
+        Returns:
+            健康检查记录实体
+        """
         check_status = HealthCheckStatusVO.SUCCESS
         links_found = 0
         http_status_code = None
@@ -75,7 +111,7 @@ class NewsSourceHealthCheckService(INewsSourceHealthCheckService):
             try:
                 parse_result = source_config.parse_response(response)
 
-                # 4. 判断解析结果
+                # 判断解析结果
                 if parse_result.status == ResponseParseResultStatusVO.SUCCESS:
                     if len(parse_result.urls) > 0:
                         check_status = HealthCheckStatusVO.SUCCESS
@@ -112,8 +148,8 @@ class NewsSourceHealthCheckService(INewsSourceHealthCheckService):
             error_message = f"未知错误: {str(e)}"
             logger.exception(f"健康检查失败(未知错误): {error_message}")
 
-        # 5. 创建并保存检查记录
-        record = HealthCheckRecordEntity(
+        # 创建检查记录
+        return HealthCheckRecordEntity(
             resource_id=source_config.source_id,
             check_status=check_status,
             checked_at=datetime.now(),
@@ -121,14 +157,6 @@ class NewsSourceHealthCheckService(INewsSourceHealthCheckService):
             http_status_code=http_status_code,
             error_message=error_message,
         )
-
-        await self.repository.save_health_check_record(record)
-        logger.info(f"健康检查记录已保存: {check_status.desc}")
-
-        # 6. 检查是否需要更新源状态（连续失败 3 次）
-        await self._update_source_status_if_needed(source_config.source_id)
-
-        return record
 
     def _build_test_params(self, source_config: AbstractNewsSourceConfig) -> dict[str, Any]:
         """
@@ -164,16 +192,17 @@ class NewsSourceHealthCheckService(INewsSourceHealthCheckService):
 
         return test_params
 
-    async def _update_source_status_if_needed(self, resource_id: str) -> None:
+    async def _update_source_status_if_needed(self, session, resource_id: str) -> None:
         """
         检查最近的健康检查记录，如果连续 3 次失败则更新源状态为异常
 
         Args:
+            session: 数据库会话（事务内）
             resource_id: 新闻源标识
         """
         # 查询最近 3 次检查记录
         recent_checks = await self.repository.get_recent_health_checks(
-            resource_id=resource_id, limit=3
+            session=session, resource_id=resource_id, limit=3
         )
 
         # 如果不足 3 次，不做判断
@@ -191,7 +220,7 @@ class NewsSourceHealthCheckService(INewsSourceHealthCheckService):
                 f"新闻源 {resource_id} 连续 3 次健康检查失败，更新状态为异常"
             )
             await self.repository.update_source_status_by_health(
-                resource_id=resource_id, status=NewsSourceStatusVO.PARSE_ERROR
+                session=session, resource_id=resource_id, status=NewsSourceStatusVO.PARSE_ERROR
             )
         else:
             logger.debug(f"新闻源 {resource_id} 健康状态正常")
