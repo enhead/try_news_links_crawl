@@ -57,7 +57,10 @@ class EnumerableLayer(AbstractCrawlLayer):
                 f"发现={len(child_result.urls_found)}, 新增={len(child_result.urls_new)}"
             )
 
-        merged = CrawlNodeResultEntity.merge_all(children_results)
+        merged = CrawlNodeResultEntity.create_composite(
+            layer_type=LayerType.ENUMERABLE,
+            children=children_results,
+        )
         logger.info(
             f"枚举层完成: key={self.key}, "
             f"总发现={len(merged.urls_found)}, 总新增={len(merged.urls_new)}"

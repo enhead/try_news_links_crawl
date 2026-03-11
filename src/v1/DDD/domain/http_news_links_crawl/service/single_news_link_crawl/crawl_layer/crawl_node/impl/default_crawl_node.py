@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import logging
 
+from v1.DDD.domain.http_news_links_crawl.model.entity.execution_phase_entity import NewsExecutionPhaseEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import (
     CrawlNodeResultEntity,
     DiscoveredNewsLinkUrl,
 )
+from v1.DDD.domain.http_news_links_crawl.model.valobj.node_status_vo import NodeStatusVO
 from v1.DDD.infrastructure.http.httpx_adapter import (
     HttpRequestError,
     HttpStatusError,
@@ -38,9 +40,17 @@ class DefaultCrawlNode(AbstractCrawlNode):
             self._factor.params, len(urls_found),
         )
 
-        return CrawlNodeResultEntity(
+        # 构建执行阶段（仅包含发现的链接，不含去重）
+        execution = NewsExecutionPhaseEntity(
+            request_params=dict(self._factor.params),
             urls_found=urls_found,
             urls_new=[],  # 待 Layer 层批量去重
+            parse_status="success",
+        )
+
+        return CrawlNodeResultEntity.create_leaf(
+            status=NodeStatusVO.SUCCESS,
+            execution=execution,
         )
 
     async def execute(self) -> CrawlNodeResultEntity:
@@ -60,7 +70,13 @@ class DefaultCrawlNode(AbstractCrawlNode):
             self._factor.params, len(urls_found), len(urls_new),
         )
 
+        # 计算重复率
+        exist_ratio = 0.0
+        if urls_found:
+            exist_ratio = (len(urls_found) - len(urls_new)) / len(urls_found)
+
         # 批量保存
+        saved_count = 0
         if urls_new:
             from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
 
@@ -69,15 +85,26 @@ class DefaultCrawlNode(AbstractCrawlNode):
                 links=urls_new
             )
             save_result = await self._factor.context.news_crawl_repository.save_batch(aggregate)
+            saved_count = save_result.saved_count
 
             logger.debug(
                 "批量保存完成: params=%s, saved=%d, skipped=%d",
                 self._factor.params, save_result.saved_count, len(save_result.skipped_urls)
             )
 
-        return CrawlNodeResultEntity(
+        # 构建完整的执行阶段
+        execution = NewsExecutionPhaseEntity(
+            request_params=dict(self._factor.params),
             urls_found=urls_found,
             urls_new=urls_new,
+            exist_ratio=exist_ratio,
+            saved_count=saved_count,
+            parse_status="success",
+        )
+
+        return CrawlNodeResultEntity.create_leaf(
+            status=NodeStatusVO.SUCCESS,
+            execution=execution,
         )
 
     async def _fetch_and_parse(self) -> list[DiscoveredNewsLinkUrl]:

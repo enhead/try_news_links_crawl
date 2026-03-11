@@ -65,4 +65,7 @@ class MappingLayer(AbstractCrawlLayer):
             child_result = await self.next_layer.execute(new_factor)
             children_results.append(child_result)
 
-        return CrawlNodeResultEntity.merge_all(children_results)
+        return CrawlNodeResultEntity.create_composite(
+            layer_type=LayerType.MAPPING,
+            children=children_results,
+        )

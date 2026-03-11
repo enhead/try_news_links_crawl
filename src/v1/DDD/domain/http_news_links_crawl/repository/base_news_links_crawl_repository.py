@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
     from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
+    from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import CrawlNodeResultEntity
     from v1.DDD.domain.http_news_links_crawl.model.entity.news_source_metadata import NewsSourceMetadata
 
 
@@ -130,5 +132,33 @@ class INewsCrawlRepository(ABC):
 
         Returns:
             BatchSaveResult，含实际写入条数与跳过的重复 URL
+        """
+        ...
+
+    # ------------------------------------------------------------------
+    # 爬取日志保存
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    async def save_crawl_log(
+        self,
+        session: "AsyncSession",
+        resource_id: str,
+        result: "CrawlNodeResultEntity",
+        started_at: datetime,
+        finished_at: datetime,
+    ) -> int:
+        """
+        保存爬取日志到 crawl_log 表
+
+        Args:
+            session: 数据库会话（用于事务控制）
+            resource_id: 新闻源唯一标识
+            result: 爬取结果（顶层组合节点）
+            started_at: 爬取开始时间
+            finished_at: 爬取结束时间
+
+        Returns:
+            插入记录的主键 ID
         """
         ...

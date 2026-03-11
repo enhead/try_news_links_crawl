@@ -72,3 +72,8 @@ class CrawlLayerFactory:
             values=schema.values,
             next_layer=next_layer
         )
+
+
+# 导入 Layer 实现类以触发装饰器注册
+# 这必须在 CrawlLayerFactory 定义之后，以避免循环导入
+from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer import impl  # noqa: F401

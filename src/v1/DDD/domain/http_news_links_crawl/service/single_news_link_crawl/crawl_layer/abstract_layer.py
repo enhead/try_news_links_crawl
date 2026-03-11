@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from v1.DDD.domain.http_news_links_crawl.model.entity.layer_factor_entity import LayerFactorEntity
     from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import CrawlNodeResultEntity
 
-
 class AbstractCrawlLayer(ABC):
     """
     爬取层抽象基类。

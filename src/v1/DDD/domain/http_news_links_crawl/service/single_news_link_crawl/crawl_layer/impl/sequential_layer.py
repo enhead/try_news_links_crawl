@@ -16,6 +16,7 @@ from v1.DDD.domain.http_news_links_crawl.model.entity.layer_factor_entity import
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import (
     CrawlNodeResultEntity,
 )
+from v1.DDD.domain.http_news_links_crawl.model.valobj.stop_reason_vo import StopReasonVO
 from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.abstract_layer import AbstractCrawlLayer
 from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.crawl_node.abstract_crawl_node import (
     AbstractCrawlNode,
@@ -103,11 +104,13 @@ class SequentialLayer(AbstractCrawlLayer):
         all_results: list[CrawlNodeResultEntity] = []
         state = PruneState()
         pages_crawled = 0
+        stop_reason = None  # 记录停止原因
 
         while True:
             # 检查是否达到最大页码限制
             if self.max_pages is not None and pages_crawled >= self.max_pages:
                 logger.info(f"达到最大页码限制 {self.max_pages}，终止翻页: {self.key}={current_value}")
+                stop_reason = StopReasonVO.PRUNED_BY_DEPTH
                 break
 
             new_factor = factor.with_param(self.key, current_value)
@@ -128,11 +131,24 @@ class SequentialLayer(AbstractCrawlLayer):
             should_stop, reason = self.should_prune(state)
             if should_stop:
                 logger.info(f"剪枝终止: {reason}, 最后页码: {self.key}={current_value}")
+                # 根据剪枝原因设置 stop_reason
+                if state.consecutive_empty >= self.max_consecutive_empty:
+                    stop_reason = StopReasonVO.NATURAL_END  # 空页自然结束
+                elif state.consecutive_duplicate >= self.max_consecutive_duplicate:
+                    stop_reason = StopReasonVO.PRUNED_BY_RATIO  # 重复率剪枝
                 break
 
             current_value += self.step
 
-        merged = CrawlNodeResultEntity.merge_all(all_results)
+        # 如果正常遍历完所有页（没有剪枝），设置为 COMPLETED
+        if stop_reason is None:
+            stop_reason = StopReasonVO.COMPLETED
+
+        merged = CrawlNodeResultEntity.create_composite(
+            layer_type=LayerType.SEQUENTIAL,
+            children=all_results,
+            stop_reason=stop_reason,
+        )
         logger.info(
             f"顺序层完成: key={self.key}, 总页数={pages_crawled}, "
             f"总发现={len(merged.urls_found)}, 总新增={len(merged.urls_new)}"
