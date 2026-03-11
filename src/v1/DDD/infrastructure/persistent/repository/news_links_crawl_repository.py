@@ -1,19 +1,31 @@
 from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
+from v1.DDD.domain.http_news_links_crawl.model.entity.health_check_record_entity import HealthCheckRecordEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.news_source_metadata import NewsSourceMetadata
+from v1.DDD.domain.http_news_links_crawl.model.valobj.news_source_status_vo import NewsSourceStatusVO
 from v1.DDD.domain.http_news_links_crawl.repository.base_news_links_crawl_repository import (
     INewsCrawlRepository,
     BatchSaveResult,
 )
-from v1.DDD.infrastructure.persistent.dao import NewsLinkDAO, NewsSourceDAO
-from v1.DDD.infrastructure.persistent.models.mapper import NewsLinkMapper, NewsSourceMapper
+from v1.DDD.infrastructure.persistent.dao import NewsLinkDAO, NewsSourceDAO, NewsSourceHealthCheckDAO
+from v1.DDD.infrastructure.persistent.models.mapper import (
+    NewsLinkMapper,
+    NewsSourceMapper,
+    NewsSourceHealthCheckMapper,
+)
 
 
 class NewsLinksCrawlRepository(INewsCrawlRepository):
     """新闻链接爬虫仓储实现"""
 
-    def __init__(self, news_link_dao: NewsLinkDAO, news_source_dao: NewsSourceDAO):
+    def __init__(
+        self,
+        news_link_dao: NewsLinkDAO,
+        news_source_dao: NewsSourceDAO,
+        health_check_dao: NewsSourceHealthCheckDAO,
+    ):
         self.news_link_dao = news_link_dao
         self.news_source_dao = news_source_dao
+        self.health_check_dao = health_check_dao
 
     # ------------------------------------------------------------------
     # 新闻源元数据查询
@@ -66,3 +78,29 @@ class NewsLinksCrawlRepository(INewsCrawlRepository):
         skipped_urls = [r["url"] for r in records[saved_count:]] if saved_count < len(records) else []
 
         return BatchSaveResult(saved_count=saved_count, skipped_urls=skipped_urls)
+
+    # ------------------------------------------------------------------
+    # 健康检查
+    # ------------------------------------------------------------------
+
+    async def save_health_check_record(self, record: HealthCheckRecordEntity) -> None:
+        """保存健康检查记录"""
+        insert_dict = NewsSourceHealthCheckMapper.to_insert_dict(record)
+        await self.health_check_dao.insert(insert_dict)
+
+    async def get_recent_health_checks(
+        self, resource_id: str, limit: int = 10
+    ) -> list[HealthCheckRecordEntity]:
+        """获取指定新闻源最近的健康检查记录"""
+        models = await self.health_check_dao.find_recent_by_resource_id(
+            resource_id=resource_id, limit=limit
+        )
+        return NewsSourceHealthCheckMapper.to_entity_list(models)
+
+    async def update_source_status_by_health(
+        self, resource_id: str, status: NewsSourceStatusVO
+    ) -> None:
+        """根据健康检查结果更新新闻源状态"""
+        await self.health_check_dao.update_source_status(
+            resource_id=resource_id, status=status.code
+        )
