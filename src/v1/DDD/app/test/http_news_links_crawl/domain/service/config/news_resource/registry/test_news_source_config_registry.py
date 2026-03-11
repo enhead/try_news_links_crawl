@@ -26,6 +26,8 @@ pytest src/v1/DDD/app/test/http_news_links_crawl/domain/service/config/news_reso
 -s 显示 print 输出（包括日志和统计信息）
 - --log-cli-level=INFO 显示 INFO 级别日志，这里换成debug更详细
 """
+from datetime import datetime
+
 """
  ⚡ 对程序的影响
 
@@ -148,6 +150,10 @@ class InvalidConfig:
 
 class MockRepository(INewsCrawlRepository):
     """Mock 仓储实现"""
+
+    async def save_crawl_log(self, session: "AsyncSession", resource_id: str, result: "CrawlNodeResultEntity",
+                             started_at: datetime, finished_at: datetime) -> int:
+        pass
 
     def __init__(self):
         self.sources = {}

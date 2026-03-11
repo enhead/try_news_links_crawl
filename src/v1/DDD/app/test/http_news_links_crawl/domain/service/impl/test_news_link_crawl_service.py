@@ -77,6 +77,7 @@ pytest src/v1/DDD/app/test/http_news_links_crawl/domain/service/impl/test_news_l
   ...
 ```
 """
+from datetime import datetime
 
 import pytest
 from bs4 import BeautifulSoup
@@ -156,6 +157,10 @@ class JawaPosNewsSourceConfig(AbstractNewsSourceConfig):
 
 class MockRepository(INewsCrawlRepository):
     """Mock 仓储实现,用于测试"""
+
+    async def save_crawl_log(self, session: "AsyncSession", resource_id: str, result: "CrawlNodeResultEntity",
+                             started_at: datetime, finished_at: datetime) -> int:
+        pass
 
     async def save_health_check_record(self, record: "HealthCheckRecordEntity") -> None:
         pass
