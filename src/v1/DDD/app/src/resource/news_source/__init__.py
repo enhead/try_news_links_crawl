@@ -23,8 +23,6 @@
 """
 
 # 导入所有新闻源配置类以触发装饰器注册
-# 示例：
-# from v1.DDD.app.src.resource.news_source.jawapos_config import JawaPosConfig
-# from v1.DDD.app.src.resource.news_source.straits_times_config import StraitTimesConfig
+from v1.DDD.app.src.resource.news_source.jawapos_config import JawaPosConfig
 
-__all__ = []
+__all__ = ["JawaPosConfig"]
