@@ -23,7 +23,6 @@ from bs4 import BeautifulSoup
 
 from v1.DDD.domain.http_news_links_crawl.model.entity.news_source_metadata import NewsSourceMetadata
 from v1.DDD.domain.http_news_links_crawl.model.entity.response_parse_result_entity import ResponseParseResultEntity
-from v1.DDD.domain.http_news_links_crawl.model.valobj import NewsSourceStatusVO
 from v1.DDD.domain.http_news_links_crawl.model.valobj.response_parse_result_status_vo import ResponseParseResultStatusVO
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.abstract_news_source_config import AbstractNewsSourceConfig
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.registry.news_source_config_registry import NewsSourceConfigRegistry
@@ -38,24 +37,17 @@ from v1.DDD.infrastructure.http.response import Response
 class JawaPosConfig(AbstractNewsSourceConfig):
     """JawaPos 新闻源配置实现"""
 
-    def __init__(self):
+    def __init__(self, metadata: NewsSourceMetadata):
         """
         初始化 JawaPos 配置
 
-        该配置将在应用启动时由 NewsSourceConfigRegistry 自动加载。
-        数据库中需要有对应的 resource_id="id_jawapos" 记录。
-        """
-        # 元数据配置
-        metadata = NewsSourceMetadata(
-            resource_id="id_jawapos",
-            name="Jawa Pos",
-            domain="www.jawapos.com",
-            url="https://www.jawapos.com",
-            country="ID",
-            language="id",
-            status=NewsSourceStatusVO.NORMAL
-        )
+        Args:
+            metadata: 从数据库加载的新闻源元数据
 
+        说明：
+            该配置将在应用启动时由 NewsSourceConfigRegistry 自动加载。
+            metadata 参数由 Registry 从数据库查询后传入，无需手动创建。
+        """
         # 爬取层级配置
         layer_schema = LayerSchema(
             type=LayerType.ENUMERABLE,
@@ -70,7 +62,7 @@ class JawaPosConfig(AbstractNewsSourceConfig):
                     step=1,
                     max_consecutive_empty=1,      # 连续1页无新链接则停止
                     max_consecutive_duplicate=1,  # 连续1页全是旧链接则停止
-                    max_pages=5                    # 每个类别最多爬5页
+                    max_pages=2                    # 每个类别最多爬5页 TODO：现在先这样
                 )
             )
         )

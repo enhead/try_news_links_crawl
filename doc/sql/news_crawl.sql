@@ -1,5 +1,19 @@
 -- ============================================================
--- 数据库创建
+-- 数据库初始化脚本
+-- ============================================================
+-- ⚠️ 重要：运行本项目前必须先执行此 SQL 文件初始化数据库
+--
+-- 执行方式：
+--   方式1（推荐）: mysql -u root -p < doc/sql/news_crawl.sql
+--   方式2: 使用 MySQL Workbench 打开并执行
+--   方式3: 命令行: mysql -u root -p -e "source /path/to/news_crawl.sql"
+--
+-- 功能说明：
+--   1. 创建数据库 news_crawl
+--   2. 创建 3 张核心表：news_source, news_link, news_content
+--   3. 运行主程序时，插入配置新闻源数据
+--
+-- 版本要求：MySQL 5.7+ / MariaDB 10.2+
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS `news_crawl`
     DEFAULT CHARACTER SET utf8mb4
@@ -146,3 +160,125 @@ CREATE TABLE `news_content`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci
     COMMENT = '新闻内容表，1:1 对应 news_link，仅在解析成功后写入。parse_error 在 is_parse=4 时由应用层同步写入本表，便于故障排查。';
+
+
+-- ============================================================
+-- 4. crawl_log — 爬虫执行日志表
+--    职责：记录每次爬取任务的详细执行结果
+--    写入方：爬虫服务在每次爬取结束后写入
+-- ============================================================
+DROP TABLE IF EXISTS `crawl_log`;
+CREATE TABLE `crawl_log`
+(
+    `id`                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `resource_id`         VARCHAR(255) NOT NULL COMMENT '关联 news_source.resource_id',
+
+    -- 爬取结果汇总
+    `crawl_status`        VARCHAR(20)  NOT NULL
+        COMMENT 'success-全部成功 partial-部分失败 failed-全部失败',
+    `total_categories`    INT          NOT NULL DEFAULT 0 COMMENT '本次爬取的栏目/参数组合数',
+    `success_categories`  INT          NOT NULL DEFAULT 0 COMMENT '成功的栏目数',
+    `failed_categories`   INT          NOT NULL DEFAULT 0 COMMENT '失败的栏目数',
+    `total_links_found`   INT          NOT NULL DEFAULT 0 COMMENT '总共发现的链接数',
+    `total_links_new`     INT          NOT NULL DEFAULT 0 COMMENT '新增链接数',
+
+    -- 详细信息（JSON格式）
+    `details`             JSON         NULL COMMENT '每个栏目的详细结果，格式见注释',
+
+    -- 时间
+    `started_at`          DATETIME     NOT NULL COMMENT '爬取开始时间',
+    `finished_at`         DATETIME     NOT NULL COMMENT '爬取结束时间',
+    `duration_ms`         INT          NOT NULL COMMENT '耗时（毫秒）',
+
+    `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (`id`),
+    INDEX `idx_resource_id` (`resource_id`),
+    INDEX `idx_crawl_status` (`crawl_status`),
+    INDEX `idx_started_at` (`started_at`)
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci
+    COMMENT = '爬虫执行日志表：记录每次爬取任务的详细结果，用于监控和问题排查
+
+-- details 字段 JSON 格式示例：
+-- {
+--   "categories": [
+--     {
+--       "category": "politics",
+--       "params": {"category": "politics", "page": 1},
+--       "status": "success",
+--       "links_found": 10,
+--       "links_new": 5,
+--       "duration_ms": 1234
+--     },
+--     {
+--       "category": "tech",
+--       "params": {"category": "tech", "page": 1},
+--       "status": "http_error",
+--       "http_code": 500,
+--       "error": "Internal Server Error",
+--       "duration_ms": 567
+--     }
+--   ]
+-- }
+';
+
+
+-- ============================================================
+-- 初始化数据：插入默认新闻源
+-- ============================================================
+-- 说明：项目运行需要一定需要插入配置好的新闻源
+-- ============================================================
+
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'id_jawapos',                    -- 新闻源唯一标识（对应代码中的 JawaPosConfig）
+    'Jawa Pos',                      -- 媒体名称
+    'www.jawapos.com',               -- 域名
+    'https://www.jawapos.com',       -- 首页 URL
+    'ID',                            -- 国家代码（印度尼西亚）
+    'id',                            -- 语言代码（印尼语）
+    0,                               -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
+    `updated_at` = NOW();
+
+-- ------------------------------------------------------------
+-- Berita Harian (马来西亚)
+-- ------------------------------------------------------------
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'my_berita_harian',              -- 新闻源唯一标识（对应代码中的 BeritaHarianConfig）
+    'Berita Harian',                 -- 媒体名称
+    'www.bharian.com.my',            -- 域名
+    'https://www.bharian.com.my',    -- 首页 URL
+    'MY',                            -- 国家代码（马来西亚）
+    'ms',                            -- 语言代码（马来语）
+    0,                               -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
+    `updated_at` = NOW();
