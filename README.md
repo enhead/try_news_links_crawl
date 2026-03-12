@@ -7,11 +7,6 @@
 
 
 
-> TODO：
->
-> - 这里推荐使用`uv`
-> - 需要补充**`uv pip install -e .`**
-
 # 新闻爬虫运行指南
 
 ## ⚠️ 首次运行必读
@@ -81,6 +76,27 @@ NEWS_SOURCE_MODULES=v1.DDD.app.src.resource.news_source
 ## 🚀 快速开始
 
 ### 环境准备
+
+**推荐使用 [uv](https://github.com/astral-sh/uv)（更快的 Python 包管理器）**：
+
+```bash
+# 安装 uv（如果还没有）
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 以可编辑模式安装项目
+uv pip install -e .
+
+# 安装 curl-cffi（HTTP 适配器，推荐）
+uv pip install curl-cffi
+
+# 可选：安装 API 触发器依赖
+uv pip install fastapi uvicorn
+
+# 可选：安装定时任务触发器依赖
+uv pip install apscheduler
+```
+
+**使用传统 pip**（备选方案）：
 
 ```bash
 # 安装基础依赖

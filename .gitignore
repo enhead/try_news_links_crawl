@@ -12,7 +12,7 @@ wheels/
 # 环境相关
 .idea
 /.spec-workflow/
-/.serena/
+
 
 # 运行时产生
 *.log
@@ -21,6 +21,10 @@ wheels/
 #claude相关
 # 忽略所有目录下的 CLAUDE.md 文件
 CLAUDE.md
+
+/.serena/*
+!/.serena/memories
+
 
 # 或者更明确的写法
 **/CLAUDE.md
