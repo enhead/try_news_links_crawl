@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 
+from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
 from v1.DDD.domain.http_news_links_crawl.model.entity.execution_phase_entity import NewsExecutionPhaseEntity
 from v1.DDD.domain.http_news_links_crawl.model.entity.layer_node_result_entity import (
     CrawlNodeResultEntity,
@@ -59,9 +60,15 @@ class DefaultCrawlNode(AbstractCrawlNode):
 
         # 批量去重
         if urls_found:
-            urls_new = await self._factor.context.news_crawl_repository.check_exists_batch(
-                urls_found
+            # 构建聚合对象进行去重
+            aggregate = NewsLinkBatchAggregate(
+                metadata=self._factor.context.source_config.metadata,
+                links=urls_found
             )
+            new_aggregate = await self._factor.context.news_crawl_repository.check_exists_batch(
+                aggregate
+            )
+            urls_new = new_aggregate.links
         else:
             urls_new = []
 
@@ -78,17 +85,26 @@ class DefaultCrawlNode(AbstractCrawlNode):
         # 批量保存
         saved_count = 0
         if urls_new:
-            from v1.DDD.domain.http_news_links_crawl.model.aggregate.news_link_batch_aggregate import NewsLinkBatchAggregate
-
+            # 🎯 使用传入的 session（由 Application Service 管理事务）
             aggregate = NewsLinkBatchAggregate(
                 metadata=self._factor.context.source_config.metadata,
                 links=urls_new
             )
-            save_result = await self._factor.context.news_crawl_repository.save_batch(aggregate)
-            saved_count = save_result.saved_count
 
-            logger.debug(
-                "批量保存完成: params=%s, saved=%d, skipped=%d",
+            logger.info(
+                "开始保存新链接: params=%s, 待保存=%d",
+                self._factor.params, len(urls_new)
+            )
+
+            save_result = await self._factor.context.news_crawl_repository.save_batch(
+                self._factor.context.session,  # 使用传入的 session
+                aggregate
+            )
+            saved_count = save_result.saved_count
+            # ✅ 不再自己 commit，由 Application Service 统一管理
+
+            logger.info(
+                "保存完成: params=%s, 成功=%d, 跳过=%d",
                 self._factor.params, save_result.saved_count, len(save_result.skipped_urls)
             )
 

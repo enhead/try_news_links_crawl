@@ -175,8 +175,8 @@ class MockRepository(INewsCrawlRepository):
         """模拟去重,全部返回为新链接"""
         return urls_or_aggregate
 
-    async def save_batch(self, aggregate):
-        """模拟保存"""
+    async def save_batch(self, session, aggregate):
+        """模拟保存（需要 session）"""
         from v1.DDD.domain.http_news_links_crawl.repository.base_news_links_crawl_repository import BatchSaveResult
         return BatchSaveResult(
             saved_count=len(aggregate.links),
@@ -284,12 +284,37 @@ def mock_repository():
 
 
 @pytest.fixture
-def crawl_context(news_source_config, http_adapter, mock_repository):
-    """爬取上下文"""
+def mock_session():
+    """Mock session - 模拟 AsyncSession"""
+    from unittest.mock import AsyncMock
+
+    class MockSession:
+        """Mock AsyncSession with commit and rollback"""
+        async def commit(self):
+            """Mock commit"""
+            pass
+
+        async def rollback(self):
+            """Mock rollback"""
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    return MockSession()
+
+
+@pytest.fixture
+def crawl_context(news_source_config, http_adapter, mock_repository, mock_session):
+    """爬取上下文（使用 session）"""
     return CrawlContext(
         source_config=news_source_config,
         http_adapter=http_adapter,
-        news_crawl_repository=mock_repository
+        news_crawl_repository=mock_repository,
+        session=mock_session  # 🎯 直接传入 session
     )
 
 

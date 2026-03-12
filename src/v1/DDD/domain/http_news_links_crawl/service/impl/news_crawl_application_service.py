@@ -92,8 +92,10 @@ class NewsCrawlApplicationService(INewsCrawlApplicationService):
 
         流程：
         1. 从 NewsSourceConfigRegistry 获取配置实例
-        2. 组装 NewsResourceCrawlFactorEntity（包含 context）
-        3. 调用 INewsLinkCrawlService.execute_crawl()
+        2. 创建数据库会话（管理事务边界）
+        3. 组装 NewsResourceCrawlFactorEntity（包含 context 和 session）
+        4. 调用 INewsLinkCrawlService.execute_crawl()
+        5. 提交事务（成功）或回滚（失败）
 
         Args:
             resource_id: 新闻源 ID（如 "sg_straits_times"）
@@ -115,26 +117,67 @@ class NewsCrawlApplicationService(INewsCrawlApplicationService):
                 self._repository
             )
 
-            # 2. 组装 CrawlContext
-            context = CrawlContext(
-                source_config=source_config,
-                http_adapter=self._http_adapter,
-                news_crawl_repository=self._repository
-            )
+            # 2. 🎯 创建 session，管理整个爬取流程的事务边界
+            async with self._repository.session_factory() as session:
+                logger.debug(f"开始数据库事务: {resource_id}")
 
-            # 3. 组装 NewsResourceCrawlFactorEntity
-            crawl_factor = NewsResourceCrawlFactorEntity(context=context)
+                # 记录开始时间
+                from datetime import datetime
+                started_at = datetime.now()
 
-            # 4. 调用领域服务
-            result = await self._crawl_service.execute_crawl(crawl_factor)
+                try:
+                    # 3. 组装 CrawlContext（传入 session）
+                    context = CrawlContext(
+                        source_config=source_config,
+                        http_adapter=self._http_adapter,
+                        news_crawl_repository=self._repository,
+                        session=session  # 🎯 传入 session
+                    )
 
-            logger.info(
-                f"爬取完成: {resource_id}, "
-                f"发现链接={len(result.layer_result.urls_found)}, "
-                f"新链接={len(result.layer_result.urls_new)}"
-            )
+                    # 4. 组装 NewsResourceCrawlFactorEntity
+                    crawl_factor = NewsResourceCrawlFactorEntity(context=context)
 
-            return result
+                    # 5. 调用领域服务
+                    result = await self._crawl_service.execute_crawl(crawl_factor)
+
+                    # 记录结束时间
+                    finished_at = datetime.now()
+
+                    # 6. 🎯 保存爬取日志（在同一事务中）
+                    log_id = await self._repository.save_crawl_log(
+                        session=session,
+                        resource_id=resource_id,
+                        result=result.layer_result,  # 传入顶层结果
+                        started_at=started_at,
+                        finished_at=finished_at
+                    )
+                    logger.info(f"爬取日志已保存: {resource_id}, log_id={log_id}")
+
+                    # 7. 🎯 提交事务（包含链接保存 + 日志保存）
+                    logger.info(
+                        f"提交事务: {resource_id}, "
+                        f"发现链接={len(result.layer_result.urls_found)}, "
+                        f"新链接={len(result.layer_result.urls_new)}"
+                    )
+                    await session.commit()                  # TODO：事务提交在这里，注意了
+                    logger.info(f"事务提交成功: {resource_id}")
+
+                    logger.info(
+                        f"爬取完成: {resource_id}, "
+                        f"发现链接={len(result.layer_result.urls_found)}, "
+                        f"新链接={len(result.layer_result.urls_new)}"
+                    )
+
+                    return result
+
+                except Exception as e:
+                    # 🎯 异常时回滚事务
+                    await session.rollback()
+                    logger.error(
+                        f"爬取失败，事务已回滚: {resource_id}, "
+                        f"错误类型={type(e).__name__}, 详情={e}"
+                    )
+                    raise
 
         except KeyError as e:
             logger.error(f"新闻源未注册: {resource_id}, 错误={e}")

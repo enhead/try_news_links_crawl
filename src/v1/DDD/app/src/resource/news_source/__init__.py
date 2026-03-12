@@ -21,8 +21,8 @@
 - 配置类必须在应用启动时被导入，否则装饰器不会执行
 - 建议在此 __init__.py 中统一导入所有配置类
 """
-
 # 导入所有新闻源配置类以触发装饰器注册
 from v1.DDD.app.src.resource.news_source.jawapos_config import JawaPosConfig
+from v1.DDD.app.src.resource.news_source.berita_harian_config import BeritaHarianConfig
 
-__all__ = ["JawaPosConfig"]
+__all__ = ["JawaPosConfig","BeritaHarianConfig"]

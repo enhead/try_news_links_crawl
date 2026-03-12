@@ -112,7 +112,6 @@ class INewsCrawlRepository(ABC):
         ...
 
 
-    # TODO 待完善：批量保存操作我先简单实现了
     @abstractmethod
     async def save_batch(
         self,
@@ -120,7 +119,7 @@ class INewsCrawlRepository(ABC):
         aggregate: "NewsLinkBatchAggregate",
     ) -> BatchSaveResult:
         """
-        批量写入新链接到 news_link 表
+        批量写入新链接到 news_link 表（需要外部管理事务）
 
         实现层约束：
             必须使用 INSERT IGNORE 或 ON DUPLICATE KEY 保证幂等性，
@@ -132,6 +131,10 @@ class INewsCrawlRepository(ABC):
 
         Returns:
             BatchSaveResult，含实际写入条数与跳过的重复 URL
+
+        Note:
+            方案A架构：Application Service 管理事务边界。
+            所有写操作都通过此方法完成，由外部传入 session 并控制 commit/rollback。
         """
         ...
 
