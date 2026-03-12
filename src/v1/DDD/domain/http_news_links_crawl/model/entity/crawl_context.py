@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from v1.DDD.domain.http_news_links_crawl.repository.base_news_links_crawl_repository import INewsCrawlRepository
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.abstract_news_source_config import \
     AbstractNewsSourceConfig
-from v1.DDD.infrastructure.http.httpx_adapter import HttpAdapter
+from v1.DDD.infrastructure.http.base_http_adapter import BaseHttpAdapter
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,7 +36,7 @@ class CrawlContext:
     """
 
     source_config: AbstractNewsSourceConfig
-    http_adapter: HttpAdapter
+    http_adapter: BaseHttpAdapter
     news_crawl_repository: INewsCrawlRepository
     session: "AsyncSession"  # 🎯 改为 session，由外部管理
 

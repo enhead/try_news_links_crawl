@@ -18,7 +18,7 @@ from v1.DDD.domain.http_news_links_crawl.repository.base_news_links_crawl_reposi
 from v1.DDD.domain.http_news_links_crawl.service.base_news_crawl_application_service import INewsCrawlApplicationService
 from v1.DDD.domain.http_news_links_crawl.service.config.news_resource.registry.news_source_config_registry import NewsSourceConfigRegistry
 from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.base_news_link_crawl_service import INewsLinkCrawlService
-from v1.DDD.infrastructure.http.httpx_adapter import HttpAdapter
+from v1.DDD.infrastructure.http.base_http_adapter import BaseHttpAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class NewsCrawlApplicationService(INewsCrawlApplicationService):
     def __init__(
         self,
         repository: INewsCrawlRepository,
-        http_adapter: HttpAdapter,
+        http_adapter: BaseHttpAdapter,
         crawl_service: INewsLinkCrawlService,
         news_source_config: NewsSourceConfig
     ):

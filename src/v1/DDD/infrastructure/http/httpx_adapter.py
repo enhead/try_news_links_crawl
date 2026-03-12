@@ -23,6 +23,7 @@ from tenacity import (
     wait_fixed,
 )
 
+from v1.DDD.infrastructure.http.base_http_adapter import BaseHttpAdapter
 from v1.DDD.infrastructure.http.request_parameter import RequestParameter
 from v1.DDD.infrastructure.http.response import Response
 
@@ -55,12 +56,12 @@ class HttpStatusError(Exception):
 
 
 # ---------------------------------------------------------------------------
-# HttpAdapter
+# HttpxAdapter
 # ---------------------------------------------------------------------------
 
-class HttpAdapter:
+class HttpxAdapter(BaseHttpAdapter):
     """
-    HTTP 请求适配器，封装 httpx。
+    httpx HTTP 请求适配器，封装 httpx。
 
     职责单一：只负责"发请求"这一件事。
     上层（CrawlNode）只需传入填充好的 RequestParameter，不需要感知 httpx 细节。
@@ -70,7 +71,7 @@ class HttpAdapter:
         使用完毕后必须调用 close()，或使用 async with 管理。
 
         # 推荐写法
-        async with HttpAdapter() as adapter:
+        async with HttpxAdapter() as adapter:
             response = await adapter.send(request_params)
     """
 
@@ -118,7 +119,7 @@ class HttpAdapter:
         """释放连接池，程序退出或 Adapter 不再使用时调用。"""
         await self._client.aclose()
 
-    async def __aenter__(self) -> "HttpAdapter":
+    async def __aenter__(self) -> "HttpxAdapter":
         return self
 
     async def __aexit__(self, *_) -> None:

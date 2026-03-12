@@ -41,6 +41,7 @@ class AbstractNewsSourceConfig(ABC):
         metadata: NewsSourceMetadata,
         layer_schema: "LayerSchema",
         template_request_config: RequestParameter,
+        http_adapter_overrides: dict[str, Any] | None = None,
     ) -> None:
         """
         初始化新闻源配置。
@@ -49,10 +50,16 @@ class AbstractNewsSourceConfig(ABC):
             metadata: 新闻源元数据（包含 resource_id, country, name, domain 等）
             layer_schema: 爬虫层级配置
             template_request_config: HTTP 请求模板
+            http_adapter_overrides: HTTP 适配器覆盖配置（可选）
+                - adapter_type: "httpx" 或 "curl_cffi"（覆盖全局默认）
+                - impersonate: curl_cffi 的 impersonate 参数（覆盖全局默认）
+                - timeout: 超时时间（覆盖全局默认）
+                - 等其他适配器参数
         """
         self.metadata = metadata
         self.layer_schema = layer_schema
         self.template_request_config = template_request_config
+        self.http_adapter_overrides = http_adapter_overrides or {}
 
     # ------------------------------------------------------------------
     # 便捷属性：向后兼容，避免大量代码修改

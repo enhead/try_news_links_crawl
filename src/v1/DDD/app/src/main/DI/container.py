@@ -29,10 +29,53 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from v1.DDD.app.src.main.config.app_config import AppConfig
 from v1.DDD.domain.http_news_links_crawl.service.impl.news_crawl_application_service import NewsCrawlApplicationService
 from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.impl.news_link_crawl_service import NewsLinkCrawlService
-from v1.DDD.infrastructure.http.httpx_adapter import HttpAdapter
+from v1.DDD.infrastructure.http.curl_cffi_adapter import CurlCffiAdapter
+from v1.DDD.infrastructure.http.httpx_adapter import HttpxAdapter
 from v1.DDD.infrastructure.persistent.repository.news_links_crawl_repository import (
     NewsLinksCrawlRepository,
 )
+
+
+def _create_http_adapter(http_config):
+    """
+    HTTP 适配器工厂函数
+
+    根据配置动态创建 httpx 或 curl_cffi 适配器。
+
+    Args:
+        http_config: HttpConfig 配置对象
+
+    Returns:
+        BaseHttpAdapter: HTTP 适配器实例
+
+    Raises:
+        ValueError: 不支持的适配器类型
+    """
+    adapter_type = http_config.default_adapter
+
+    if adapter_type == "curl_cffi":
+        return CurlCffiAdapter(
+            impersonate=http_config.curl_cffi_impersonate,
+            timeout=http_config.timeout,
+            connect_timeout=http_config.connect_timeout,
+            read_timeout=http_config.read_timeout,
+            max_connections=http_config.max_connections,
+        )
+    elif adapter_type == "httpx":
+        return HttpxAdapter(
+            timeout=http_config.timeout,
+            connect_timeout=http_config.connect_timeout,
+            read_timeout=http_config.read_timeout,
+            write_timeout=http_config.write_timeout,
+            pool_timeout=http_config.pool_timeout,
+            max_connections=http_config.max_connections,
+            max_keepalive_connections=http_config.max_keepalive_connections,
+        )
+    else:
+        raise ValueError(
+            f"不支持的 HTTP 适配器类型: {adapter_type}. "
+            f"请使用 'httpx' 或 'curl_cffi'"
+        )
 
 
 class AppContainer(containers.DeclarativeContainer):
@@ -97,15 +140,10 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
     # HTTP 适配器（单例，复用连接池）
+    # 根据配置动态选择 httpx 或 curl_cffi
     http_adapter = providers.Singleton(
-        HttpAdapter,
-        timeout=config.provided.http.timeout,
-        connect_timeout=config.provided.http.connect_timeout,
-        read_timeout=config.provided.http.read_timeout,
-        write_timeout=config.provided.http.write_timeout,
-        pool_timeout=config.provided.http.pool_timeout,
-        max_connections=config.provided.http.max_connections,
-        max_keepalive_connections=config.provided.http.max_keepalive_connections,
+        _create_http_adapter,
+        http_config=config.provided.http,
     )
 
     # ========================================

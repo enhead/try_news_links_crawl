@@ -37,6 +37,13 @@ class DatabaseConfig:
 @dataclass(frozen=True)
 class HttpConfig:
     """HTTP 配置"""
+    # 适配器选择
+    default_adapter: str  # "httpx" 或 "curl_cffi"
+
+    # curl_cffi 特有配置
+    curl_cffi_impersonate: str  # "chrome120", "safari15_5", etc.
+
+    # 通用配置（适用于所有适配器）
     timeout: float
     connect_timeout: float
     read_timeout: float
@@ -157,6 +164,8 @@ class AppConfig:
             )
 
             http = HttpConfig(
+                default_adapter=os.getenv("HTTP_DEFAULT_ADAPTER", "curl_cffi"),
+                curl_cffi_impersonate=os.getenv("HTTP_CURL_CFFI_IMPERSONATE", "chrome120"),
                 timeout=float(os.getenv("HTTP_TIMEOUT", "30")),
                 connect_timeout=float(os.getenv("HTTP_CONNECT_TIMEOUT", "5")),
                 read_timeout=float(os.getenv("HTTP_READ_TIMEOUT", "15")),
