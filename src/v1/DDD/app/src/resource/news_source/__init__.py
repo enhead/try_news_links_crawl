@@ -27,5 +27,18 @@ from v1.DDD.app.src.resource.news_source.jawapos_config import JawaPosConfig
 from v1.DDD.app.src.resource.news_source.berita_harian_config import BeritaHarianConfig
 from v1.DDD.app.src.resource.news_source.jinbian_wanbao_config import JinbianWanbaoConfig
 from v1.DDD.app.src.resource.news_source.kompas_config import KompasConfig
+from v1.DDD.app.src.resource.news_source.brudirect_config import BruDirectConfig
+from v1.DDD.app.src.resource.news_source.bangkok_post_config import BangkokPostConfig
+from v1.DDD.app.src.resource.news_source.inquirer_config import InquirerConfig
+from v1.DDD.app.src.resource.news_source.jakarta_globe_config import JakartaGlobeConfig
 
-__all__ = ["JawaPosConfig", "BeritaHarianConfig", "JinbianWanbaoConfig", "KompasConfig"]
+__all__ = [
+    "JawaPosConfig",
+    "BeritaHarianConfig",
+    "JinbianWanbaoConfig",
+    "KompasConfig",
+    "BruDirectConfig",
+    "BangkokPostConfig",
+    "InquirerConfig",
+    "JakartaGlobeConfig"
+]
