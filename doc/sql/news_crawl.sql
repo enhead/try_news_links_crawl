@@ -445,3 +445,57 @@ INSERT INTO `news_source` (
 )
 ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
     `updated_at` = NOW();
+
+-- ------------------------------------------------------------
+-- The Business Times (新加坡)
+-- ------------------------------------------------------------
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'sg_business_times',                    -- 新闻源唯一标识（对应代码中的 BusinessTimesConfig）
+    'The Business Times',                   -- 媒体名称
+    'www.businesstimes.com.sg',             -- 域名
+    'https://www.businesstimes.com.sg',     -- 首页 URL
+    'SG',                                   -- 国家代码（新加坡）
+    'en',                                   -- 语言代码（英语）
+    0,                                      -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE                     -- 如果已存在则更新时间
+    `updated_at` = NOW();
+
+-- ====================================================
+-- 新闻源 10: BeritaSatu.com（印度尼西亚综合新闻）
+-- ====================================================
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'id_beritasatu',                        -- 新闻源唯一标识（对应代码中的 BeritaSatuConfig）
+    'BeritaSatu.com',                       -- 媒体名称
+    'www.beritasatu.com',                   -- 域名
+    'https://www.beritasatu.com',           -- 首页 URL
+    'ID',                                   -- 国家代码（印度尼西亚）
+    'id',                                   -- 语言代码（印尼语）
+    0,                                      -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE                     -- 如果已存在则更新时间
+    `updated_at` = NOW();

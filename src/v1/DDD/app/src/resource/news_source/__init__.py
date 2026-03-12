@@ -18,6 +18,8 @@
     from v1.DDD.app.src.resource.news_source.jawapos_config import JawaPosConfig
 
 注意：
+- 有限使用mcp
+- 先看看是否有RSS订阅，有的话，先询问，再继续
 - 配置类必须在应用启动时被导入，否则装饰器不会执行
 - 建议在此 __init__.py 中统一导入所有配置类
 - 不要忘记sql文件需要更新插入
@@ -31,6 +33,8 @@ from v1.DDD.app.src.resource.news_source.brudirect_config import BruDirectConfig
 from v1.DDD.app.src.resource.news_source.bangkok_post_config import BangkokPostConfig
 from v1.DDD.app.src.resource.news_source.inquirer_config import InquirerConfig
 from v1.DDD.app.src.resource.news_source.jakarta_globe_config import JakartaGlobeConfig
+from v1.DDD.app.src.resource.news_source.business_times_config import BusinessTimesConfig
+from v1.DDD.app.src.resource.news_source.beritasatu_config import BeritaSatuConfig
 
 __all__ = [
     "JawaPosConfig",
@@ -40,5 +44,7 @@ __all__ = [
     "BruDirectConfig",
     "BangkokPostConfig",
     "InquirerConfig",
-    "JakartaGlobeConfig"
+    "JakartaGlobeConfig",
+    "BusinessTimesConfig",
+    "BeritaSatuConfig"
 ]
