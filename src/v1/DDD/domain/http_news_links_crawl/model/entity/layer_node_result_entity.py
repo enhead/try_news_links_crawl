@@ -11,6 +11,8 @@ from v1.DDD.domain.http_news_links_crawl.model.valobj.node_status_vo import Node
 from v1.DDD.domain.http_news_links_crawl.model.valobj.stop_reason_vo import StopReasonVO
 
 
+# TODO：还需要研究下：多次重复的情况，日志的输出感觉也一般
+
 @dataclass
 class DiscoveredNewsLinkUrl:
     """

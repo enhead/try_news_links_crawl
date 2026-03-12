@@ -282,3 +282,57 @@ INSERT INTO `news_source` (
 )
 ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
     `updated_at` = NOW();
+
+-- ------------------------------------------------------------
+-- 金边晚报 (柬埔寨)
+-- ------------------------------------------------------------
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'kh_jinbian_wanbao',             -- 新闻源唯一标识（对应代码中的 JinbianWanbaoConfig）
+    '金边晚报',                       -- 媒体名称
+    'www.jinbianwanbao.cn',          -- 域名
+    'http://www.jinbianwanbao.cn',   -- 首页 URL
+    'KH',                            -- 国家代码（柬埔寨）
+    'zh-CN',                         -- 语言代码（中文简体）
+    0,                               -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
+    `updated_at` = NOW();
+
+-- ------------------------------------------------------------
+-- Kompas (印度尼西亚)
+-- ------------------------------------------------------------
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'id_kompas',                     -- 新闻源唯一标识（对应代码中的 KompasConfig）
+    'Kompas',                        -- 媒体名称
+    'www.kompas.com',                -- 域名
+    'https://www.kompas.com',        -- 首页 URL
+    'ID',                            -- 国家代码（印度尼西亚）
+    'id',                            -- 语言代码（印尼语）
+    0,                               -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
+    `updated_at` = NOW();

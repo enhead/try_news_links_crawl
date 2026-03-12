@@ -5,6 +5,13 @@
 
 ---
 
+
+
+> TODO：
+>
+> - 这里推荐使用`uv`
+> - 需要补充**`uv pip install -e .`**
+
 # 新闻爬虫运行指南
 
 ## ⚠️ 首次运行必读
@@ -61,6 +68,10 @@ DB_USER=root
 DB_PASSWORD=your_password
 DB_DATABASE=news_crawl
 
+# HTTP 适配器配置（新增）
+HTTP_DEFAULT_ADAPTER=curl_cffi          # 推荐：curl_cffi（绕过反爬虫）或 httpx
+HTTP_CURL_CFFI_IMPERSONATE=chrome120    # 模拟浏览器类型
+
 # 新闻源模块配置
 NEWS_SOURCE_MODULES=v1.DDD.app.src.resource.news_source
 ```
@@ -74,6 +85,12 @@ NEWS_SOURCE_MODULES=v1.DDD.app.src.resource.news_source
 ```bash
 # 安装基础依赖
 pip install -r requirements.txt
+
+# 安装 cryptography（MySQL 认证需要）
+pip install cryptography
+
+# 安装 curl-cffi（HTTP 适配器，推荐）
+pip install curl-cffi
 
 # 可选：安装 API 触发器依赖
 pip install fastapi uvicorn
@@ -242,7 +259,7 @@ python run_crawler.py
    curl -X POST http://localhost:8000/api/v1/crawl/single \
      -H "Content-Type: application/json" \
      -d '{"resource_id": "id_jawapos"}'
-
+   
    # 获取所有新闻源
    curl http://localhost:8000/api/v1/sources
    ```
@@ -360,6 +377,111 @@ python -m v1.DDD.trigger.scheduler_trigger
 
 ```bash
 python -m v1.DDD.trigger.api_trigger
+```
+
+---
+
+## 🌐 HTTP 适配器配置
+
+### 多适配器架构
+
+项目支持两种 HTTP 客户端，可根据新闻源特点灵活选择：
+
+#### 1. CurlCffiAdapter（推荐 ⭐）
+
+**特点**：
+- ✅ 模拟真实浏览器 TLS 指纹
+- ✅ 绕过 Cloudflare、DataDome 等反爬虫
+- ✅ 支持 HTTP/2、HTTP/3
+- ✅ 更真实的浏览器特征
+
+**适用场景**：
+- 有 Cloudflare 保护的站点（如 Berita Harian）
+- 高频爬取需要规避检测
+- 默认推荐使用
+
+**配置**：
+```bash
+HTTP_DEFAULT_ADAPTER=curl_cffi
+HTTP_CURL_CFFI_IMPERSONATE=chrome120  # 可选：chrome110, safari15_5, edge101
+```
+
+**依赖**：
+```bash
+pip install curl-cffi  # 或 uv add curl-cffi
+```
+
+#### 2. HttpxAdapter
+
+**特点**：
+- ✅ 稳定、成熟的 HTTP 库
+- ✅ 完整的 HTTP/1.1 和 HTTP/2 支持
+- ❌ 容易被反爬虫系统识别
+
+**适用场景**：
+- 无反爬虫限制的站点
+- 内网或合作站点
+- 开发调试
+
+**配置**：
+```bash
+HTTP_DEFAULT_ADAPTER=httpx
+```
+
+### 全局配置 vs 新闻源覆盖
+
+#### 全局配置（.env 文件）
+
+```bash
+# 所有新闻源默认使用 curl_cffi
+HTTP_DEFAULT_ADAPTER=curl_cffi
+HTTP_CURL_CFFI_IMPERSONATE=chrome120
+HTTP_TIMEOUT=30
+```
+
+#### 新闻源级别覆盖（可选）
+
+某些新闻源可以在配置类中覆盖：
+
+```python
+# berita_harian_config.py
+super().__init__(
+    metadata=metadata,
+    layer_schema=layer_schema,
+    template_request_config=request_template,
+    http_adapter_overrides={
+        "adapter_type": "curl_cffi",     # 强制使用 curl_cffi
+        "impersonate": "safari15_5",     # 覆盖浏览器类型
+        "timeout": 60.0,                 # 覆盖超时时间
+    }
+)
+```
+
+### 适配器选择建议
+
+| 新闻源特征 | 推荐适配器 | 原因 |
+|-----------|-----------|------|
+| 有 Cloudflare 保护 | CurlCffiAdapter | 绕过 WAF 检测 |
+| 频繁返回 403 | CurlCffiAdapter | 更真实的浏览器指纹 |
+| 无反爬虫 | HttpxAdapter | 性能稳定 |
+| 不确定 | CurlCffiAdapter | 推荐默认选项 |
+
+### 故障排查
+
+**问题：403 Forbidden**
+```bash
+# 解决方法1：切换到 curl_cffi
+HTTP_DEFAULT_ADAPTER=curl_cffi
+
+# 解决方法2：更换浏览器指纹
+HTTP_CURL_CFFI_IMPERSONATE=safari15_5  # 尝试不同的浏览器
+```
+
+**问题：请求超时**
+```bash
+# 增大超时时间
+HTTP_TIMEOUT=60
+HTTP_CONNECT_TIMEOUT=10
 ```
 
 ---

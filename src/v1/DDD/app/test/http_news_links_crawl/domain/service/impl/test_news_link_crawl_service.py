@@ -96,7 +96,7 @@ from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_la
 from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.factory.layer_factory import LayerSchema, LayerType
 from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.crawl_layer.impl.sequential_layer import SequentialLayerConfig
 from v1.DDD.domain.http_news_links_crawl.service.single_news_link_crawl.impl.news_link_crawl_service import NewsLinkCrawlService
-from v1.DDD.infrastructure.http.httpx_adapter import HttpAdapter
+from v1.DDD.infrastructure.http.curl_cffi_adapter import CurlCffiAdapter
 from v1.DDD.infrastructure.http.request_parameter import RequestParameter
 
 # 导入 layer 实现以触发装饰器注册
@@ -273,8 +273,8 @@ def news_source_config(jawapos_metadata, layer_schema, request_template):
 
 @pytest.fixture
 def http_adapter():
-    """HTTP 适配器"""
-    return HttpAdapter()
+    """HTTP 适配器（默认使用 curl_cffi）"""
+    return CurlCffiAdapter()
 
 
 @pytest.fixture
