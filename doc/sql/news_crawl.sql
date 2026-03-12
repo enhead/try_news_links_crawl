@@ -336,3 +336,112 @@ INSERT INTO `news_source` (
 )
 ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
     `updated_at` = NOW();
+
+-- ------------------------------------------------------------
+-- BruDirect (文莱)
+-- ------------------------------------------------------------
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'bn_brudirect',                  -- 新闻源唯一标识（对应代码中的 BruDirectConfig）
+    'BruDirect',                     -- 媒体名称
+    'brudirect.com',                 -- 域名
+    'https://brudirect.com',         -- 首页 URL
+    'BN',                            -- 国家代码（文莱）
+    'en',                            -- 语言代码（英语）
+    0,                               -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
+    `updated_at` = NOW();
+
+-- ------------------------------------------------------------
+-- Bangkok Post (泰国)
+-- ------------------------------------------------------------
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'th_bangkok_post',               -- 新闻源唯一标识（对应代码中的 BangkokPostConfig）
+    'Bangkok Post',                  -- 媒体名称
+    'www.bangkokpost.com',           -- 域名
+    'https://www.bangkokpost.com',   -- 首页 URL
+    'TH',                            -- 国家代码（泰国）
+    'en',                            -- 语言代码（英语）
+    0,                               -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
+    `updated_at` = NOW();
+
+-- ------------------------------------------------------------
+-- Inquirer (菲律宾)
+-- ------------------------------------------------------------
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'ph_inquirer',                   -- 新闻源唯一标识（对应代码中的 InquirerConfig）
+    'Inquirer',                      -- 媒体名称
+    'newsinfo.inquirer.net',         -- 域名
+    'https://newsinfo.inquirer.net', -- 首页 URL
+    'PH',                            -- 国家代码（菲律宾）
+    'en',                            -- 语言代码（英语）
+    0,                               -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
+    `updated_at` = NOW();
+
+-- ------------------------------------------------------------
+-- Jakarta Globe (印度尼西亚)
+-- ------------------------------------------------------------
+# TODO：这个配置文件应该是有问题的
+INSERT INTO `news_source` (
+    `resource_id`,
+    `name`,
+    `domain`,
+    `url`,
+    `country`,
+    `language`,
+    `status`,
+    `created_at`,
+    `updated_at`
+) VALUES (
+    'id_jakarta_globe',              -- 新闻源唯一标识（对应代码中的 JakartaGlobeConfig）
+    'Jakarta Globe',                 -- 媒体名称
+    'jakartaglobe.id',               -- 域名
+    'https://jakartaglobe.id',       -- 首页 URL
+    'ID',                            -- 国家代码（印度尼西亚）
+    'en',                            -- 语言代码（英语）
+    0,                               -- 状态：0-正常调度
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE             -- 如果已存在则更新时间
+    `updated_at` = NOW();
